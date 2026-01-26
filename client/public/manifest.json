@@ -27,6 +27,11 @@
             "purpose": "maskable"
         },
         {
+            "src": "/icon.png",
+            "sizes": "96x96",
+            "type": "image/png"
+        },
+        {
             "src": "/logo.svg",
             "sizes": "any",
             "type": "image/svg+xml"

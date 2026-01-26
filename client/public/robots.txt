@@ -1,7 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /dashboard/
-Disallow: /manage/
-Disallow: /profile/
-
-Sitemap: https://devinbook.devinsol.com/sitemap.xml

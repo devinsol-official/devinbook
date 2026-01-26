@@ -26,16 +26,22 @@ export const metadata: Metadata = {
     "Digital Ledger",
     "Wealth Management",
     "Professional Budgeting",
-    "Expense Logging PWA"
+    "Expense Logging PWA",
+    "Ledger Reports",
+    "WhatsApp Financial Reporting",
+    "Budget Category Optimization",
+    "Private Bookkeeping App",
+    "Fintech Blog",
+    "Small Business Expense Tracker"
   ],
-  authors: [{ name: "Devinsol Group Architecture", url: "https://devinsol.com" }],
+  authors: [{ name: "Team Devinsol", url: "https://devinsol.com" }],
   publisher: "Devinsol",
   robots: "index, follow",
   openGraph: {
     type: "website",
     url: "https://devinbook.devinsol.com",
     title: "DevinBook | Daily Spending Mastered",
-    description: "Absorb absolute clarity over every Rupee. Log, map, and command your daily budget instantly.",
+    description: "Absorb absolute clarity over every transaction. Log, map, and command your daily budget instantly in any currency.",
     siteName: "DevinBook",
     images: [{
       url: "/logo.svg",
@@ -52,9 +58,14 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg",
-    shortcut: "/logo.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", type: "image/png", sizes: "96x96" },
+    ],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   appleWebApp: {
     capable: true,

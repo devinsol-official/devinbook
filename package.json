@@ -1,6 +1,6 @@
 {
   "name": "devinbook-root",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Root package for Expanse Tracking App",
   "scripts": {
     "dev:client": "npm run dev --prefix client",

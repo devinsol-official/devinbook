@@ -2,6 +2,21 @@
 
 All notable changes to the **DevinBook** project will be documented in this file.
 
+## [1.3.3] - 2026-01-26
+### Added
+- **"Financial Intelligence" Hub**: Launched a premium Blog system with high-quality, professional articles focusing on finance strategy, small business reporting, and security.
+- **Dynamic SEO Automation**: Implemented automated Sitemap and Robots.txt generation using Next.js Metadata API, ensuring every new blog post is immediately discoverable by search engines.
+- **Premium Editorial Design**: Created a distinct blog aesthetic with high-resolution generated imagery and sharp editorial typography optimized for readability.
+
+### Changed
+- **Conversion Optimization**: Standardized navigation labels to "Try Now" and "Go to App" across all touchpoints to create a more direct and inviting user journey.
+- **Brand Consistency**: Consolidated all metadata and content attribution under the "Team Devinsol" identity.
+- **Global Strategy**: Updated SEO and landing page copy to be currency-neutral, explicitly highlighting support for multi-currency transactions.
+
+### Fixed
+- **Favicon & Identity**: Optimized the icon system with vector SVG support and high-resolution (96x96) Desktop PNG icons.
+- **Accessibility & Contrast**: Resolved "white-on-white" invisibility issues on blog pages by forcing high-contrast typography and overriding system dark-mode inversions for the editorial content.
+
 ## [1.3.2] - 2026-01-24
 ### Added
 - **Default Protection & Migration**: Implemented a "fail-safe" system for Categories and Accounts. Default items ("Other Expenses", "Other Income", "Main Wallet") are now protected from deletion.

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import packageInfo from "../../package.json"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
@@ -84,10 +85,10 @@ const Nav = () => {
         </Link>
 
         <div className="hidden lg:flex items-center gap-8">
-          {['Features', 'Intelligence', 'Security', 'Reports'].map((item) => (
+          {['Features', 'Intelligence', 'Security', 'Reports', 'Blog'].map((item) => (
             <Link
               key={item}
-              href={`#${item.toLowerCase()}`}
+              href={item === 'Blog' ? '/blog' : `#${item.toLowerCase()}`}
               className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 hover:text-[#8B5CF6] transition-colors font-sans"
             >
               {item}
@@ -97,10 +98,10 @@ const Nav = () => {
 
         <div className="flex items-center gap-4">
           <Link href="/dashboard" className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 hover:text-black px-3 transition-colors font-sans hidden sm:block">
-            Vault Access
+            Go to App
           </Link>
           <PremiumButton href="/dashboard" size="sm">
-            Launch App
+            Try Now
           </PremiumButton>
         </div>
       </div>
@@ -185,7 +186,6 @@ export default function LandingPage() {
   return (
     <div className="relative min-h-screen bg-white text-black overflow-x-hidden font-sans selection:bg-indigo-100 tracking-[-0.01em]">
       <Nav />
-      <Nav />
 
       <main className="relative min-h-screen">
         {/* Dynamic Background Decor */}
@@ -224,7 +224,7 @@ export default function LandingPage() {
             >
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 shadow-sm font-sans mb-1">
                 <Sparkles className="w-2.5 h-2.5 text-indigo-500" />
-                DevinBook v1.3.1
+                DevinBook v{packageInfo.version}
               </div>
 
               <h1 className="text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-black tracking-[-0.04em] leading-[0.95] text-black font-sans">
@@ -233,7 +233,7 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-slate-500 text-base md:text-lg lg:text-xl font-medium max-w-md mx-auto lg:mx-0 leading-relaxed font-sans opacity-90">
-                Absorb absolute clarity over every Rupee. Log daily expenses in seconds, map your burn rate instantly, and command your budget with precision.
+                Absorb absolute clarity over every transaction. Log daily expenses in seconds, map your burn rate instantly, and command your budget with precision.
               </p>
 
               <div className="flex flex-col items-center lg:items-start gap-6 pt-2">
@@ -455,6 +455,61 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Latest from the Blog */}
+        <section className="py-24 px-6 bg-slate-50/50 rounded-[60px] mx-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
+              <div className="space-y-4 max-w-2xl">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#8B5CF6]">Financial Intelligence</span>
+                <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.1]">
+                  Master your wealth with <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] to-[#D946EF]">expert insights.</span>
+                </h2>
+              </div>
+              <Link href="/blog" className="group flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 hover:text-[#8B5CF6] transition-colors mb-2">
+                Visit Blog Hub <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                {
+                  slug: "master-personal-finances-devinbook",
+                  title: "Master Your Personal Finances: The Modern Guide",
+                  tag: "Finance Strategy",
+                  img: "/blogs/finance-mastery.png"
+                },
+                {
+                  slug: "whatsapp-ledger-reports-business",
+                  title: "Why WhatsApp Ledger Reports are Changing the Game",
+                  tag: "Small Business",
+                  img: "/blogs/whatsapp-ledger.png"
+                },
+                {
+                  slug: "strategic-budgeting-category-distribution",
+                  title: "Strategic Budgeting: Spotting Spending Leaks",
+                  tag: "Savings Expert",
+                  img: "/blogs/budget-categories.png"
+                }
+              ].map((post, i) => (
+                <Link key={post.slug} href={`/blog/${post.slug}`} className="group">
+                  <div className="bg-white rounded-[32px] p-4 border border-slate-100 h-full hover:shadow-2xl hover:shadow-[#8B5CF6]/10 transition-all duration-500">
+                    <div className="aspect-[16/10] rounded-[24px] overflow-hidden mb-6">
+                      <img src={post.img} alt={post.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    </div>
+                    <div className="space-y-3 px-2 pb-2">
+                      <span className="text-[9px] font-black uppercase tracking-[0.15em] text-[#8B5CF6]">{post.tag}</span>
+                      <h3 className="text-xl font-bold tracking-tight text-slate-900 group-hover:text-[#8B5CF6] transition-colors leading-tight line-clamp-2">
+                        {post.title}
+                      </h3>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Final CTA */}
         <section aria-label="Call to Action" className="py-24 px-6 text-center max-w-4xl mx-auto">
           <motion.div
@@ -471,11 +526,11 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-col md:flex-row items-center justify-center gap-6 pt-4">
-              <PremiumButton href="/dashboard" size="lg" className="h-20 px-16 text-xl" aria-label="Access the Dashboard">
-                Access Your Dashboard
+              <PremiumButton href="/dashboard" size="lg" className="h-20 px-16 text-xl" aria-label="Go to App">
+                Try Now
               </PremiumButton>
-              <PremiumButton href="https://devinsol.com" variant="outline" size="lg" className="h-16 px-10" aria-label="Contact for Enterprise solutions">
-                Connect Enterprise
+              <PremiumButton href="https://devinsol.com/contact-us/?query-type=Product%20Inquiry&product=Devinbook" variant="outline" size="lg" className="h-16 px-10" aria-label="Inquire about building a similar application">
+                Project Inquiry
               </PremiumButton>
             </div>
           </motion.div>
@@ -485,14 +540,14 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-20 border-t border-slate-50 flex flex-col items-center gap-10 bg-white">
         <div className="flex items-center gap-10 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-          {['Dashboard', 'Ledger', 'Intelligence', 'Security', 'Legal'].map(f => (
-            <Link key={f} href="#" className="hover:text-black transition-colors font-sans">{f}</Link>
+          {['App', 'Ledger', 'Intelligence', 'Blog', 'Legal'].map(f => (
+            <Link key={f} href={f === 'Blog' ? '/blog' : f === 'App' ? '/dashboard' : '#'} className="hover:text-black transition-colors font-sans">{f}</Link>
           ))}
         </div>
 
         <div className="flex flex-col items-center gap-4">
           <Link
-            href="https://devinsol.com"
+            href="https://devinsol.com/contact-us/?query-type=Product%20Inquiry&product=Devinbook"
             target="_blank"
             className="group flex items-center gap-2.5 transition-all duration-300"
           >
