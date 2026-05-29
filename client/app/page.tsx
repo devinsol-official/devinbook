@@ -28,7 +28,9 @@ import {
   PlusCircle,
   LayoutDashboard,
   ArrowUpRight,
-  ChevronRight
+  ChevronRight,
+  Menu,
+  X
 } from "lucide-react"
 
 // Premium Button Component
@@ -65,6 +67,7 @@ const PremiumButton = ({ children, href, variant = "primary", className = "", si
 
 const Nav = () => {
   const [scrolled, setScrolled] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -75,7 +78,7 @@ const Nav = () => {
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "bg-white/80 backdrop-blur-xl border-b border-slate-200/50 py-2.5" : "bg-transparent py-5"
       }`}>
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between relative z-10">
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="w-9 h-9 relative">
             <img src="/logo.svg" alt="DevinBook" className="w-full h-full object-contain relative z-10" />
@@ -96,15 +99,50 @@ const Nav = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
           <Link href="/dashboard" className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 hover:text-black px-3 transition-colors font-sans hidden sm:block">
             Go to App
           </Link>
           <PremiumButton href="/dashboard" size="sm">
             Try Now
           </PremiumButton>
+          <button 
+            className="lg:hidden p-2 -mr-2 text-slate-600 hover:text-black transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-full left-0 w-full bg-white border-b border-slate-200/50 shadow-xl py-4 px-6 flex flex-col gap-4 lg:hidden -z-10"
+          >
+            {['Features', 'Intelligence', 'Security', 'Pricing', 'Blog'].map((item) => (
+              <Link
+                key={item}
+                href={item === 'Blog' ? '/blog' : `#${item.toLowerCase()}`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-bold uppercase tracking-wider text-slate-700 hover:text-[#8B5CF6] transition-colors font-sans py-2 border-b border-slate-50 last:border-0"
+              >
+                {item}
+              </Link>
+            ))}
+            <div className="pt-2 sm:hidden">
+              <Link href="/dashboard" className="text-sm font-bold uppercase tracking-wider text-slate-500 hover:text-black transition-colors font-sans">
+                Go to App
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   )
 }
@@ -551,7 +589,7 @@ export default function LandingPage() {
                    </li>
                  ))}
                </ul>
-               <PremiumButton href="/register" variant="outline" className="w-full mt-10 h-14">Get Started for Free</PremiumButton>
+               <PremiumButton href="/dashboard" variant="outline" className="w-full mt-10 h-14">Get Started for Free</PremiumButton>
             </div>
             
             {/* Pro */}
@@ -577,7 +615,7 @@ export default function LandingPage() {
                    </li>
                  ))}
                </ul>
-               <PremiumButton href="/register" className="w-full mt-10 h-14">Upgrade to Pro</PremiumButton>
+               <PremiumButton href="/dashboard" className="w-full mt-10 h-14">Upgrade to Pro</PremiumButton>
             </div>
           </div>
         </section>

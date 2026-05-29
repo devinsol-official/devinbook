@@ -23,8 +23,8 @@ const fs = require('fs');
 const path = require('path');
 
 app.use((req, res, next) => {
-    const log = `${new Date().toISOString()} | ${req.method} | ${req.url} | ${req.ip}\n`;
-    fs.appendFileSync(path.join(__dirname, 'requests.log'), log);
+    const log = `${new Date().toISOString()} | ${req.method} | ${req.url} | ${req.ip}`;
+    console.log(log);
     next();
 });
 
