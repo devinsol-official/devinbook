@@ -63,6 +63,13 @@ class ApiClient {
     return this.request("/auth/me")
   }
 
+  async updateMe(data: { name?: string, theme?: string }) {
+    return this.request("/auth/me", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  }
+
   async login(email: string, password: string) {
     return this.request("/auth/login", {
       method: "POST",
@@ -236,6 +243,71 @@ class ApiClient {
 
   async getMonthWiseStats() {
     return this.request("/dashboard/month-wise")
+  }
+
+  // Admin – Subscription Management (requires x-admin-secret header)
+  async adminActivateSubscription(email: string, months: number = 1, adminSecret: string) {
+    return this.request("/admin/subscription/activate", {
+      method: "POST",
+      headers: { "x-admin-secret": adminSecret },
+      body: JSON.stringify({ email, months }),
+    })
+  }
+
+  async adminDeactivateSubscription(email: string, adminSecret: string) {
+    return this.request("/admin/subscription/deactivate", {
+      method: "POST",
+      headers: { "x-admin-secret": adminSecret },
+      body: JSON.stringify({ email }),
+    })
+  }
+
+  async adminGetSubscriptionStatus(email: string, adminSecret: string) {
+    return this.request(`/admin/subscription/status?email=${encodeURIComponent(email)}`, {
+      headers: { "x-admin-secret": adminSecret },
+    })
+  }
+
+  async adminListSubscriptions(adminSecret: string) {
+    return this.request("/admin/subscriptions/list", {
+      headers: { "x-admin-secret": adminSecret },
+    })
+  }
+
+  // WebAuthn / Passkeys
+  async getWebAuthnRegistrationOptions() {
+    return this.request("/webauthn/generate-registration-options")
+  }
+
+  async verifyWebAuthnRegistration(response: any) {
+    return this.request("/webauthn/verify-registration", {
+      method: "POST",
+      body: JSON.stringify(response),
+    })
+  }
+
+  async getWebAuthnAuthenticationOptions(email?: string) {
+    return this.request("/webauthn/generate-authentication-options", {
+      method: "POST",
+      body: JSON.stringify({ email: email || undefined }),
+    })
+  }
+
+  async verifyWebAuthnAuthentication(response: any, email?: string) {
+    return this.request("/webauthn/verify-authentication", {
+      method: "POST",
+      body: JSON.stringify({ email: email || undefined, response }),
+    })
+  }
+
+  async removeWebAuthnCredentials() {
+    return this.request("/webauthn/remove-credentials", {
+      method: "DELETE",
+    })
+  }
+
+  async getWebAuthnStatus() {
+    return this.request("/webauthn/status")
   }
 }
 

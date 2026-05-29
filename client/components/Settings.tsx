@@ -1,9 +1,14 @@
 "use client"
 
+import { useState, useEffect } from "react"
+
 import { useAuth } from "@/contexts/AuthContext"
+import { useSubscription } from "@/contexts/SubscriptionContext"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
+import { api } from "@/lib/api"
+import { startRegistration } from "@simplewebauthn/browser"
 import {
   Moon,
   Sun,
@@ -12,18 +17,35 @@ import {
   Shield,
   Bell,
   CircleHelp,
-  Info
+  Info,
+  Crown,
+  Zap
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import packageInfo from "../package.json"
 
 export function Settings() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
+  const { isPro, showUpgradeModal, daysRemaining, planExpiresAt } = useSubscription()
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
   const router = useRouter()
+
+  const formatDate = (d: Date | null) =>
+    d ? d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—"
 
   const handleLogout = () => {
     logout()
@@ -34,11 +56,70 @@ export function Settings() {
     router.push("/login")
   }
 
+  const handleThemeChange = async (checked: boolean) => {
+    const newTheme = checked ? "dark" : "light"
+    setTheme(newTheme)
+    try {
+      await api.updateMe({ theme: newTheme })
+      if (user) {
+        updateUser({ ...user, theme: newTheme })
+      }
+    } catch (err) {
+      console.error("Failed to save theme to DB", err)
+    }
+  }
+
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false)
+  const [isRegistering, setIsRegistering] = useState(false)
+
+  // Fetch initial biometrics status
+  useEffect(() => {
+    api.getWebAuthnStatus()
+      .then(res => setBiometricsEnabled(res.enabled))
+      .catch(console.error)
+  }, [])
+
+  const handleToggleBiometrics = async (checked: boolean) => {
+    if (checked) {
+      try {
+        setIsRegistering(true)
+        // 1. Get options from server
+        const options = await api.getWebAuthnRegistrationOptions()
+        
+        // 2. Pass options to browser to trigger native biometric prompt
+        const attResp = await startRegistration(options)
+        
+        // 3. Send result back to server
+        const verification = await api.verifyWebAuthnRegistration(attResp)
+        
+        if (verification.verified) {
+          setBiometricsEnabled(true)
+          toast({ title: "Success", description: "Face ID / Fingerprint enabled" })
+        } else {
+          throw new Error("Verification failed")
+        }
+      } catch (error: any) {
+        toast({ title: "Failed", description: error.message || "Failed to set up biometrics", variant: "destructive" })
+      } finally {
+        setIsRegistering(false)
+      }
+    } else {
+      try {
+        setIsRegistering(true)
+        await api.removeWebAuthnCredentials()
+        setBiometricsEnabled(false)
+        toast({ title: "Success", description: "Biometrics disabled" })
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to disable biometrics", variant: "destructive" })
+      } finally {
+        setIsRegistering(false)
+      }
+    }
+  }
+
   const menuItems = [
-    { icon: <Bell className="h-5 w-5 text-blue-500" />, label: "Notifications", value: "Push" },
-    { icon: <Shield className="h-5 w-5 text-green-500" />, label: "Security", value: "Face ID" },
-    { icon: <CircleHelp className="h-5 w-5 text-orange-500" />, label: "Help Center", value: null },
-    { icon: <Info className="h-5 w-5 text-slate-500" />, label: "About App", value: `v${packageInfo.version}` },
+    { icon: <CircleHelp className="h-5 w-5 text-orange-500" />, label: "Help Center", value: null, href: "https://devinsol.com/contact-us/" },
+    { icon: <Info className="h-5 w-5 text-slate-500" />, label: "About App", value: `v${packageInfo.version}`, href: "https://devinbook.devinsol.com" },
   ]
 
   return (
@@ -52,12 +133,94 @@ export function Settings() {
           <div className="space-y-1">
             <h2 className="text-2xl font-black tracking-tight">{user?.name}</h2>
             <p className="text-slate-400 text-sm font-medium">{user?.email}</p>
-            <div className="pt-2">
-              <span className="bg-white/10 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Premium Member</span>
+            <div className="pt-2 flex items-center gap-2">
+              {isPro ? (
+                <span className="bg-gradient-to-r from-amber-400 to-orange-400 text-black text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                  <Crown className="h-2.5 w-2.5" /> Pro Member
+                </span>
+              ) : (
+                <>
+                  <span className="bg-white/10 text-white/60 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Free Plan</span>
+                  <button
+                    onClick={() => showUpgradeModal()}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 hover:opacity-90 transition-opacity"
+                  >
+                    <Zap className="h-2.5 w-2.5" /> Upgrade
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Subscription Plan Row */}
+      <div className="space-y-4">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground px-2">Subscription</h3>
+        <div
+          onClick={() => !isPro && showUpgradeModal()}
+          className={`bg-card border rounded-[32px] p-6 ${
+            !isPro ? "cursor-pointer hover:bg-muted/30 transition-colors" : ""
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                isPro ? "bg-gradient-to-br from-amber-400 to-orange-400" : "bg-muted"
+              }`}>
+                <Crown className={`h-5 w-5 ${isPro ? "text-black" : "text-muted-foreground"}`} />
+              </div>
+              <div>
+                <p className="font-black text-sm">{isPro ? "Pro Plan" : "Free Plan"}</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">
+                  {isPro ? `Expires ${formatDate(planExpiresAt)}` : "Tap to upgrade · devinsol.com"}
+                </p>
+              </div>
+            </div>
+            {!isPro ? (
+              <span className="text-[10px] font-black uppercase bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-500 px-2.5 py-1 rounded-xl border border-indigo-500/20">
+                Upgrade
+              </span>
+            ) : (
+              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-xl border ${
+                daysRemaining !== null && daysRemaining <= 7
+                  ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                  : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+              }`}>
+                Active
+              </span>
+            )}
+          </div>
+
+          {/* Days remaining bar — only for Pro users */}
+          {isPro && daysRemaining !== null && (
+            <div className="mt-4 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Time Remaining</span>
+                <span className={`text-[11px] font-black ${
+                  daysRemaining <= 3 ? "text-rose-500" :
+                  daysRemaining <= 7 ? "text-amber-500" :
+                  "text-emerald-500"
+                }`}>
+                  {daysRemaining === 0 ? "Expires today" : `${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} left`}
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    daysRemaining <= 3 ? "bg-rose-500" :
+                    daysRemaining <= 7 ? "bg-amber-500" :
+                    "bg-emerald-500"
+                  }`}
+                  style={{
+                    width: `${Math.min(100, Math.round((daysRemaining / 30) * 100))}%`
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Preferences */}
       <div className="space-y-4">
@@ -75,12 +238,33 @@ export function Settings() {
             </div>
             <Switch
               checked={theme === "dark"}
-              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+              onCheckedChange={handleThemeChange}
+            />
+          </div>
+
+          <div className="p-6 flex items-center justify-between border-b">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center">
+                <Shield className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <p className="font-black text-sm">Face ID / Fingerprint</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Sign in without password</p>
+              </div>
+            </div>
+            <Switch
+              checked={biometricsEnabled}
+              disabled={isRegistering}
+              onCheckedChange={handleToggleBiometrics}
             />
           </div>
 
           {menuItems.map((item, idx) => (
-            <div key={idx} className={`p-6 flex items-center justify-between hover:bg-muted/30 cursor-pointer transition-colors ${idx !== menuItems.length - 1 ? 'border-b' : ''}`}>
+            <div 
+              key={idx} 
+              onClick={() => item.href ? window.open(item.href, '_blank') : null}
+              className={`p-6 flex items-center justify-between hover:bg-muted/30 cursor-pointer transition-colors ${idx !== menuItems.length - 1 ? 'border-b' : ''}`}
+            >
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center">
                   {item.icon}
@@ -97,14 +281,31 @@ export function Settings() {
       </div>
 
       {/* Logout */}
-      <Button
-        variant="ghost"
-        onClick={handleLogout}
-        className="w-full h-16 rounded-[24px] text-red-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center gap-3 font-black"
-      >
-        <LogOut className="h-6 w-6" />
-        Sign Out
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            className="w-full h-16 rounded-[24px] text-red-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center gap-3 font-black"
+          >
+            <LogOut className="h-6 w-6" />
+            Sign Out
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent className="rounded-[32px] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-black text-2xl">Sign Out</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 font-medium text-base">
+              Are you sure you want to sign out? You will need to enter your credentials or use Face ID to log back in.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-3 sm:gap-0">
+            <AlertDialogCancel className="rounded-[16px] h-12 font-bold text-sm">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} className="rounded-[16px] h-12 font-bold text-sm bg-red-500 text-white hover:bg-red-600 border-none">
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Devinsol Branding Footer */}
       <div className="flex flex-col items-center justify-center gap-3 pt-4 pb-12 opacity-60">

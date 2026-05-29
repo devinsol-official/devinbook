@@ -67,12 +67,20 @@ export function TransactionItem({ transaction, onDelete, onEdit }: TransactionIt
                     </View>
                 </View>
                 <View style={styles.rightContent}>
-                    <Text style={[styles.amount, { color: amountColor }]}>
-                        {amountPrefix}Rs {transaction.amount.toLocaleString()}
-                    </Text>
+                    <View style={styles.amountRow}>
+                        {transaction.isOffline && (
+                            <Ionicons name="cloud-offline-outline" size={14} color="#F59E0B" style={styles.offlineIcon} />
+                        )}
+                        <Text style={[styles.amount, { color: amountColor }]}>
+                            {amountPrefix}Rs {transaction.amount.toLocaleString()}
+                        </Text>
+                    </View>
                     <Text style={styles.date}>
                         {new Date(transaction.date).toLocaleDateString()}
                     </Text>
+                    {transaction.isOffline && (
+                        <Text style={styles.offlineText}>Pending Sync</Text>
+                    )}
                 </View>
             </View>
         </Swipeable>
@@ -130,6 +138,19 @@ const styles = StyleSheet.create({
     date: {
         fontSize: 10,
         color: '#94A3B8',
+    },
+    amountRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    offlineIcon: {
+        marginRight: 4,
+    },
+    offlineText: {
+        fontSize: 8,
+        color: '#F59E0B',
+        marginTop: 2,
+        fontWeight: 'bold',
     },
     rightActions: {
         flexDirection: 'row',

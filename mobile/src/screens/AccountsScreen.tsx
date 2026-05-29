@@ -12,16 +12,19 @@ import {
     Modal,
     Switch,
     FlatList,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
+import axios from '../services/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppContext } from '../contexts/AppContext';
 import { BottomNav } from '../components/BottomNav';
 import { TransactionItem } from '../components/TransactionItem';
 import { CONFIG } from '../constants/config';
+import { Skeleton } from '../components/Skeleton';
 
 const API_URL = CONFIG.API_URL;
 
@@ -266,8 +269,34 @@ export function AccountsScreen() {
 
     if (loading) {
         return (
-            <View style={[styles.loadingContainer, isDarkMode && styles.containerDark]}>
-                <ActivityIndicator size="large" color="#8B5CF6" />
+            <View style={[styles.container, isDarkMode && styles.containerDark]}>
+                <LinearGradient
+                    colors={['#8B5CF6', '#A855F7', '#D946EF']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.header}
+                >
+                    <View>
+                        <Skeleton width={120} height={28} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                        <Skeleton width={160} height={14} isDarkMode={isDarkMode} style={{ marginTop: 8, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                    </View>
+                    <Skeleton width={40} height={40} borderRadius={20} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                </LinearGradient>
+                <View style={{ padding: 16 }}>
+                    {/* Featured Accounts Skeleton */}
+                    <View style={{ marginBottom: 24 }}>
+                        <Skeleton width={150} height={20} isDarkMode={isDarkMode} style={{ marginBottom: 16 }} />
+                        <View style={{ flexDirection: 'row' }}>
+                            <Skeleton width={200} height={120} borderRadius={20} isDarkMode={isDarkMode} style={{ marginRight: 16 }} />
+                            <Skeleton width={200} height={120} borderRadius={20} isDarkMode={isDarkMode} />
+                        </View>
+                    </View>
+                    {/* All Accounts Skeleton */}
+                    <Skeleton width={100} height={20} isDarkMode={isDarkMode} style={{ marginBottom: 16 }} />
+                    {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} width="100%" height={80} borderRadius={16} isDarkMode={isDarkMode} style={{ marginBottom: 12 }} />
+                    ))}
+                </View>
             </View>
         );
     }
@@ -394,96 +423,101 @@ export function AccountsScreen() {
                 transparent={true}
                 onRequestClose={closeModal}
             >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={closeModal}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
                 >
-                    <View style={[styles.modalContent, isDarkMode && styles.modalContentDark]} onStartShouldSetResponder={() => true}>
-                        <View style={[styles.modalHeader, isDarkMode && styles.borderDark]}>
-                            <Text style={[styles.modalTitle, isDarkMode && styles.textWhite]}>
-                                {editingAccount ? 'Edit Account' : 'Add Account'}
-                            </Text>
-                            <TouchableOpacity onPress={closeModal}>
-                                <Ionicons name="close" size={28} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody}>
-                            {/* Name Input */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, isDarkMode && styles.textGray]}>Account Name</Text>
-                                <TextInput
-                                    style={[styles.input, isDarkMode && styles.inputDark]}
-                                    value={modalName}
-                                    onChangeText={setModalName}
-                                    placeholder="e.g., Main Bank, Cash, Credit Card"
-                                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
-                                />
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={closeModal}
+                    >
+                        <View style={[styles.modalContent, isDarkMode && styles.modalContentDark]} onStartShouldSetResponder={() => true}>
+                            <View style={[styles.modalHeader, isDarkMode && styles.borderDark]}>
+                                <Text style={[styles.modalTitle, isDarkMode && styles.textWhite]}>
+                                    {editingAccount ? 'Edit Account' : 'Add Account'}
+                                </Text>
+                                <TouchableOpacity onPress={closeModal}>
+                                    <Ionicons name="close" size={28} color="#64748B" />
+                                </TouchableOpacity>
                             </View>
 
-                            {/* Balance Input */}
-                            <View style={styles.inputContainer}>
-                                <Text style={[styles.inputLabel, isDarkMode && styles.textGray]}>Current Balance (Rs)</Text>
-                                <TextInput
-                                    style={[styles.input, isDarkMode && styles.inputDark]}
-                                    value={modalBalance}
-                                    onChangeText={setModalBalance}
-                                    placeholder="0"
-                                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-
-                            {/* Featured Toggle */}
-                            <View style={styles.inputContainer}>
-                                <View style={styles.toggleRow}>
-                                    <View>
-                                        <Text style={[styles.inputLabel, isDarkMode && styles.textGray]}>Featured Account</Text>
-                                        <Text style={[styles.toggleDescription, isDarkMode && styles.textGray]}>
-                                            Show on dashboard balance card
-                                        </Text>
-                                    </View>
-                                    <Switch
-                                        value={modalIsFeatured}
-                                        onValueChange={setModalIsFeatured}
-                                        trackColor={{ false: '#E2E8F0', true: '#A855F7' }}
-                                        thumbColor={modalIsFeatured ? '#8B5CF6' : '#F1F5F9'}
+                            <ScrollView style={styles.modalBody}>
+                                {/* Name Input */}
+                                <View style={styles.inputContainer}>
+                                    <Text style={[styles.inputLabel, isDarkMode && styles.textGray]}>Account Name</Text>
+                                    <TextInput
+                                        style={[styles.input, isDarkMode && styles.inputDark]}
+                                        value={modalName}
+                                        onChangeText={setModalName}
+                                        placeholder="e.g., Main Bank, Cash, Credit Card"
+                                        placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
                                     />
                                 </View>
-                            </View>
 
-                            {/* Save Button */}
-                            <TouchableOpacity
-                                style={[styles.saveButton, modalLoading && styles.saveButtonDisabled]}
-                                onPress={handleSave}
-                                disabled={modalLoading}
-                            >
-                                {modalLoading ? (
-                                    <ActivityIndicator color="#FFFFFF" />
-                                ) : (
-                                    <Text style={styles.saveButtonText}>
-                                        {editingAccount ? 'Update Account' : 'Create Account'}
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
+                                {/* Balance Input */}
+                                <View style={styles.inputContainer}>
+                                    <Text style={[styles.inputLabel, isDarkMode && styles.textGray]}>Current Balance (Rs)</Text>
+                                    <TextInput
+                                        style={[styles.input, isDarkMode && styles.inputDark]}
+                                        value={modalBalance}
+                                        onChangeText={setModalBalance}
+                                        placeholder="0"
+                                        placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
 
-                            {/* Delete Button (only when editing) */}
-                            {editingAccount && (
+                                {/* Featured Toggle */}
+                                <View style={styles.inputContainer}>
+                                    <View style={styles.toggleRow}>
+                                        <View>
+                                            <Text style={[styles.inputLabel, isDarkMode && styles.textGray]}>Featured Account</Text>
+                                            <Text style={[styles.toggleDescription, isDarkMode && styles.textGray]}>
+                                                Show on dashboard balance card
+                                            </Text>
+                                        </View>
+                                        <Switch
+                                            value={modalIsFeatured}
+                                            onValueChange={setModalIsFeatured}
+                                            trackColor={{ false: '#E2E8F0', true: '#A855F7' }}
+                                            thumbColor={modalIsFeatured ? '#8B5CF6' : '#F1F5F9'}
+                                        />
+                                    </View>
+                                </View>
+
+                                {/* Save Button */}
                                 <TouchableOpacity
-                                    style={styles.deleteButton}
-                                    onPress={() => {
-                                        closeModal();
-                                        setTimeout(() => handleDelete(editingAccount), 300);
-                                    }}
+                                    style={[styles.saveButton, modalLoading && styles.saveButtonDisabled]}
+                                    onPress={handleSave}
+                                    disabled={modalLoading}
                                 >
-                                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                                    <Text style={styles.deleteButtonText}>Delete Account</Text>
+                                    {modalLoading ? (
+                                        <ActivityIndicator color="#FFFFFF" />
+                                    ) : (
+                                        <Text style={styles.saveButtonText}>
+                                            {editingAccount ? 'Update Account' : 'Create Account'}
+                                        </Text>
+                                    )}
                                 </TouchableOpacity>
-                            )}
-                        </ScrollView>
-                    </View>
-                </TouchableOpacity>
+
+                                {/* Delete Button (only when editing) */}
+                                {editingAccount && (
+                                    <TouchableOpacity
+                                        style={styles.deleteButton}
+                                        onPress={() => {
+                                            closeModal();
+                                            setTimeout(() => handleDelete(editingAccount), 300);
+                                        }}
+                                    >
+                                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                                        <Text style={styles.deleteButtonText}>Delete Account</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </ScrollView>
+                        </View>
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* Account Detail Modal */}

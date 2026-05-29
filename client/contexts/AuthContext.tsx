@@ -8,6 +8,10 @@ interface User {
   id: string
   name: string
   email: string
+  plan: "free" | "pro"
+  planActivatedAt: string | null
+  planExpiresAt: string | null
+  theme: "light" | "dark"
 }
 
 interface AuthContextType {
@@ -18,6 +22,7 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<void>
   resetPassword: (token: string, password: string) => Promise<void>
   logout: () => void
+  updateUser: (user: User) => void
   loading: boolean
 }
 
@@ -57,6 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await api.getMe()
         setUser(userData)
         localStorage.setItem("user", JSON.stringify(userData))
+        if (userData.theme) {
+          localStorage.setItem("theme", userData.theme)
+        }
       } catch (error) {
         console.error("Session verification failed:", error)
         logout()
@@ -75,6 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.token && data.user) {
         localStorage.setItem("token", data.token)
         localStorage.setItem("user", JSON.stringify(data.user))
+        if (data.user.theme) {
+          localStorage.setItem("theme", data.user.theme)
+        }
         setToken(data.token)
         setUser(data.user)
       } else {
@@ -129,8 +140,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
   }
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser)
+    localStorage.setItem("user", JSON.stringify(updatedUser))
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, forgotPassword, resetPassword, logout, loading }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, token, login, register, forgotPassword, resetPassword, logout, updateUser, loading }}>{children}</AuthContext.Provider>
   )
 }
 

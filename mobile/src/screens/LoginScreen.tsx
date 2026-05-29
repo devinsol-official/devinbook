@@ -10,12 +10,14 @@ import {
     Platform,
     Alert,
     ActivityIndicator,
+    Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import axios from 'axios';
+import axios from '../services/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppContext } from '../contexts/AppContext';
 import { CONFIG } from '../constants/config';
+import Logo from '../../assets/logo.svg';
 
 const API_URL = CONFIG.API_URL;
 
@@ -70,7 +72,7 @@ export function LoginScreen() {
             >
                 <View style={styles.header}>
                     <View style={styles.logoContainer}>
-                        <Text style={styles.logoText}>DB</Text>
+                        <Logo width={100} height={100} style={styles.logoImage} />
                     </View>
                     <Text style={styles.title}>Welcome Back</Text>
                     <Text style={styles.subtitle}>
@@ -155,23 +157,13 @@ const styles = StyleSheet.create({
         marginBottom: 48,
     },
     logoContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 9999,
-        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 8,
     },
-    logoText: {
-        fontSize: 28,
-        fontWeight: '900',
-        color: '#8B5CF6',
+    logoImage: {
+        width: 100,
+        height: 100,
     },
     title: {
         fontSize: 48,

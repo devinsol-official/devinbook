@@ -9,14 +9,17 @@ import {
     RefreshControl,
     TextInput,
     Alert,
+    Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import axios from 'axios';
+import axios from '../services/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppContext } from '../contexts/AppContext';
 import { BottomNav } from '../components/BottomNav';
 import { CONFIG } from '../constants/config';
 import { TransactionItem } from '../components/TransactionItem';
+import Logo from '../../assets/logo.svg';
+import { Skeleton } from '../components/Skeleton';
 
 const API_URL = CONFIG.API_URL;
 
@@ -141,8 +144,45 @@ export function TransactionsScreen() {
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#8B5CF6" />
+            <View style={[styles.container, isDarkMode && styles.containerDark]}>
+                <LinearGradient
+                    colors={['#8B5CF6', '#A855F7', '#D946EF']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.header}
+                >
+                    <View style={styles.headerTitleContainer}>
+                        <Skeleton width={40} height={40} borderRadius={20} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                        <View style={{ marginLeft: 12 }}>
+                            <Skeleton width={120} height={24} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                            <Skeleton width={160} height={14} isDarkMode={isDarkMode} style={{ marginTop: 4, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                        </View>
+                    </View>
+                </LinearGradient>
+
+                <View style={styles.content}>
+                    {/* Filter Pills Skeleton */}
+                    <View style={{ flexDirection: 'row', marginBottom: 24, paddingHorizontal: 16 }}>
+                        {[...Array(4)].map((_, i) => (
+                            <Skeleton key={i} width={80} height={40} borderRadius={20} isDarkMode={isDarkMode} style={{ marginRight: 8 }} />
+                        ))}
+                    </View>
+
+                    {/* Stats Summary Skeleton */}
+                    <View style={{ paddingHorizontal: 16, marginBottom: 24, flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Skeleton width="30%" height={80} borderRadius={16} isDarkMode={isDarkMode} />
+                        <Skeleton width="30%" height={80} borderRadius={16} isDarkMode={isDarkMode} />
+                        <Skeleton width="30%" height={80} borderRadius={16} isDarkMode={isDarkMode} />
+                    </View>
+
+                    {/* Transactions Skeleton */}
+                    <View style={{ paddingHorizontal: 16 }}>
+                        <Skeleton width={100} height={20} isDarkMode={isDarkMode} style={{ marginBottom: 16 }} />
+                        {[...Array(6)].map((_, i) => (
+                            <Skeleton key={i} width="100%" height={70} borderRadius={12} isDarkMode={isDarkMode} style={{ marginBottom: 12 }} />
+                        ))}
+                    </View>
+                </View>
             </View>
         );
     }
@@ -158,10 +198,15 @@ export function TransactionsScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.header}
             >
-                <Text style={styles.headerTitle}>Transactions</Text>
-                <Text style={styles.headerSubtitle}>
-                    {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
-                </Text>
+                <View style={styles.headerTitleContainer}>
+                    <Logo width={40} height={40} style={styles.headerLogo} />
+                    <View>
+                        <Text style={styles.headerTitle}>Transactions</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
+                        </Text>
+                    </View>
+                </View>
             </LinearGradient>
 
             <ScrollView
@@ -282,6 +327,16 @@ const styles = StyleSheet.create({
         paddingTop: 60,
         paddingBottom: 24,
         paddingHorizontal: 24,
+    },
+    headerTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    headerLogo: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        marginRight: 12,
     },
     headerTitle: {
         fontSize: 24,

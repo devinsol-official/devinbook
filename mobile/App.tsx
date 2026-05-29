@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { View, Image, ActivityIndicator } from 'react-native';
+import Logo from './assets/logo.svg';
 
 // Import screens
 import {
@@ -17,6 +19,7 @@ import {
   AccountsScreen
 } from './src/screens';
 import { AddTransactionModal } from './src/components/AddTransactionModal';
+import { SyncStatusBanner } from './src/components/SyncStatusBanner';
 
 import { AppContext, AppContextType, Screen, User } from './src/contexts/AppContext';
 
@@ -125,7 +128,12 @@ export default function App() {
   };
 
   if (isLoading) {
-    return null; // Or a loading screen
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#8B5CF6' }}>
+        <Logo width={120} height={120} style={{ marginBottom: 24 }} />
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
   }
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -140,6 +148,7 @@ export default function App() {
           {currentScreen === 'categories' && <CategoriesScreen key={refreshTrigger} />}
           {currentScreen === 'accounts' && <AccountsScreen key={refreshTrigger} />}
           <AddTransactionModal />
+          <SyncStatusBanner />
           <StatusBar style={isDarkMode ? "light" : "dark"} />
         </SafeAreaProvider>
       </AppContext.Provider>

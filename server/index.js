@@ -4,7 +4,9 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const cron = require("node-cron");
 const connectDB = require("./config/db");
+const { expireSubscriptions } = require("./controllers/adminController");
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
@@ -13,6 +15,8 @@ const itemRoutes = require("./routes/itemRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const accountRoutes = require("./routes/accountRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const webauthnRoutes = require("./routes/webauthnRoutes");
 
 const app = express();
 const fs = require('fs');
@@ -52,8 +56,21 @@ app.use("/api/items", itemRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/accounts", accountRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/webauthn", webauthnRoutes);
 
+// ─── Midnight Cron: expire subscriptions every night at 00:00 ───────────────
+// Runs at 00:00 every night server time
+cron.schedule("0 0 * * *", async () => {
+    console.log("[Subscription Cron] Running nightly expiry check...");
+    await expireSubscriptions();
+}, {
+    scheduled: true,
+    timezone: "Asia/Karachi"  // PKT – adjust if server is in a different TZ
+});
+
+console.log("⏰ Subscription expiry cron scheduled (midnight PKT)");
+// ─────────────────────────────────────────────────────────────────────────────
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-

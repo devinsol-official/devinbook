@@ -24,7 +24,7 @@ export const STORAGE_KEYS = {
 
 export const CONFIG = {
     API_URL,
-    VERSION: '1.3.3',
+    VERSION: '1.3.4',
     DEVELOPER: {
         NAME: 'Team Devinsol',
         WEBSITE: 'https://devinsol.com',

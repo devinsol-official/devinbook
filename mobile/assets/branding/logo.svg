@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" /> <!-- Indigo-500 -->
+      <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" /> <!-- Violet-500 -->
+      <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" /> <!-- Pink-500 -->
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Container (Soft rounded square for app icon feel) -->
+  <rect x="32" y="32" width="448" height="448" rx="128" fill="#0f172a" />
+  
+  <!-- Main Logo Shape: Stylized 'D' + Bar Chart -->
+  <!-- The vertical bar of the D -->
+  <rect x="128" y="128" width="64" height="256" rx="32" fill="url(#logoGradient)" />
+  
+  <!-- The Curve of the D formed by rising bars -->
+  <rect x="224" y="278" width="56" height="106" rx="28" fill="url(#logoGradient)" fill-opacity="0.6" />
+  <rect x="304" y="208" width="56" height="176" rx="28" fill="url(#logoGradient)" fill-opacity="0.8" />
+  <rect x="384" y="128" width="56" height="256" rx="28" fill="url(#logoGradient)" />
+
+  <!-- Connecting Curve (Abstract Growth) -->
+  <path d="M160 160 Q 440 160 412 384" stroke="white" stroke-width="0" fill="none" /> 
+  
+  <!-- Shine/Gloss effect -->
+  <path d="M32 160 Q 256 32 480 160" stroke="white" stroke-width="2" stroke-opacity="0.1" fill="none" />
+</svg>

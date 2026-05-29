@@ -4,6 +4,23 @@ const Transaction = require("../models/Transaction");
 
 exports.createCategory = async (req, res) => {
   try {
+    const user = await require("../models/User").findById(req.user._id);
+    const plan = user?.plan || "free";
+
+    if (plan === "free") {
+      const count = await Category.countDocuments({
+        userId: req.user._id,
+        type: req.body.type || "expense",
+        isDefault: { $ne: true }
+      });
+      if (count >= 5) {
+        return res.status(402).json({
+          message: "Free plan limit reached. You can only create 5 categories per type. Upgrade to Pro to add more.",
+          limitReached: true
+        });
+      }
+    }
+
     const category = await Category.create({ ...req.body, userId: req.user._id });
     res.status(201).json(category);
   } catch (err) {

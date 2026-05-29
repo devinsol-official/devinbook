@@ -4,8 +4,10 @@ import { GeistMono } from "geist/font/mono"
 import { Outfit } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { UpgradeModal } from "@/components/UpgradeModal"
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -13,6 +15,7 @@ const outfit = Outfit({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://devinbook.devinsol.com"),
   title: "DevinBook | Daily Spending Mastered & Burn Rate Engine",
   description: "DevinBook is a high-performance personal finance PWA by Devinsol. Track daily expenditures, monitor real-time burn rates, and command your wealth with military-grade precision.",
   keywords: [
@@ -101,8 +104,11 @@ html {
       <body className="antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            {children}
-            <Toaster />
+            <SubscriptionProvider>
+              {children}
+              <UpgradeModal />
+              <Toaster />
+            </SubscriptionProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

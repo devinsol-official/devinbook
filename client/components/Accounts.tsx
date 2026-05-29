@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Plus, Edit, Trash2, Wallet, Landmark, User, CreditCard, Download, ArrowLeft, History, ChevronRight } from "lucide-react"
+import { Plus, Edit, Trash2, Wallet, Landmark, User, CreditCard, Download, ArrowLeft, History, ChevronRight, Crown } from "lucide-react"
 import { SwipeableTransactionItem } from "./SwipeableTransactionItem"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -12,6 +12,7 @@ import { AddAccountModal } from "./AddAccountModal"
 import { EditAccountModal } from "./EditAccountModal"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer"
 import { format } from "date-fns"
+import { useSubscription } from "@/contexts/SubscriptionContext"
 
 interface Account {
     id: string
@@ -38,6 +39,7 @@ const ACCOUNT_TYPE_COLORS: Record<string, string> = {
 
 export function Accounts() {
     const { toast } = useToast()
+    const { isPro, showUpgradeModal } = useSubscription()
     const [accounts, setAccounts] = useState<Account[]>([])
     const [loading, setLoading] = useState(true)
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -139,8 +141,26 @@ export function Accounts() {
         <div className="space-y-12 pb-20">
             <div className="flex items-center justify-between px-2">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">List of Accounts</p>
-                <Button onClick={() => setIsAddModalOpen(true)} size="sm" className="rounded-xl font-bold bg-primary/10 text-primary hover:bg-primary/20">
-                    <Plus className="h-4 w-4 mr-1" /> Add Account
+                <Button
+                    onClick={() => {
+                        if (!isPro) {
+                            showUpgradeModal("Account Management")
+                            return
+                        }
+                        setIsAddModalOpen(true)
+                    }}
+                    size="sm"
+                    className="rounded-xl font-bold bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1.5"
+                >
+                    {!isPro ? (
+                        <Crown className="h-3.5 w-3.5 text-amber-500" />
+                    ) : (
+                        <Plus className="h-4 w-4" />
+                    )}
+                    Add Account
+                    {!isPro && (
+                        <Badge className="ml-1 text-[8px] font-black uppercase bg-amber-500/20 text-amber-600 border-none px-1 py-0 rounded-md">PRO</Badge>
+                    )}
                 </Button>
             </div>
 
@@ -155,7 +175,13 @@ export function Accounts() {
                         <SwipeableTransactionItem
                             key={account.id}
                             onDelete={() => handleDeleteAccount(account)}
-                            onEdit={() => setEditingAccount(account)}
+                            onEdit={() => {
+                                if (!isPro) {
+                                    showUpgradeModal("Account Management")
+                                    return
+                                }
+                                setEditingAccount(account)
+                            }}
                             onClick={() => {
                                 setSelectedAccountForDetails(account)
                                 loadAccountTransactions(account.id)

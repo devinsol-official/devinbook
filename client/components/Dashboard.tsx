@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/AuthContext"
+import { useSubscription } from "@/contexts/SubscriptionContext"
 import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
@@ -16,7 +17,9 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
-  Tag
+  Tag,
+  Crown,
+  Lock
 } from "lucide-react"
 import { CategoryPieChart } from "./CategoryPieChart"
 import { RecentTransactions } from "./RecentTransactions"
@@ -57,6 +60,7 @@ const CHART_COLORS = [
 export function Dashboard() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
+  const { isPro, showUpgradeModal } = useSubscription()
   const [stats, setStats] = useState<{
     daily: Stats,
     weekly: Stats,
@@ -136,10 +140,18 @@ export function Dashboard() {
   }
 
   const handleShareReport = () => {
+    if (!isPro) {
+      showUpgradeModal("Share Report")
+      return
+    }
     setIsShareModalOpen(true)
   }
 
   const handleDownloadPDF = async () => {
+    if (!isPro) {
+      showUpgradeModal("PDF Export")
+      return
+    }
     const doc = new jsPDF()
     const currentStats = getFilteredStats()
     const date = new Date().toLocaleDateString('en-US', {
@@ -363,8 +375,18 @@ export function Dashboard() {
             <h1 className="text-3xl font-black tracking-tight">Overview</h1>
             <p className="text-muted-foreground text-sm font-medium">Insights into your finances</p>
           </div>
-          <Button variant="outline" size="icon" className="rounded-2xl" onClick={handleShareReport}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-2xl relative"
+            onClick={handleShareReport}
+          >
             <Share2 className="h-5 w-5" />
+            {!isPro && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center">
+                <Crown className="h-2.5 w-2.5 text-white" />
+              </span>
+            )}
           </Button>
         </div>
 
@@ -489,7 +511,52 @@ export function Dashboard() {
           <div className="flex items-center justify-between px-2">
             <h3 className="text-xl font-black tracking-tight">Top {viewType === 'expense' ? 'Spending' : 'Sources'}</h3>
           </div>
-          <div className="space-y-3">
+
+          {!isPro ? (
+            // Blurred premium breakdown for free users
+            <div className="relative rounded-[32px] overflow-hidden">
+              {/* Blurred fake items behind overlay */}
+              <div className="space-y-3 select-none pointer-events-none" style={{ filter: "blur(6px)", opacity: 0.5 }}>
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="bg-white dark:bg-slate-950 rounded-[28px] border shadow-sm p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl" style={{ backgroundColor: ["#ef4444","#3b82f6","#f59e0b"][i] }} />
+                      <div className="space-y-1.5">
+                        <div className="h-3 w-24 bg-muted rounded-full" />
+                        <div className="h-2 w-16 bg-muted/60 rounded-full" />
+                      </div>
+                    </div>
+                    <div className="h-4 w-20 bg-muted rounded-full" />
+                  </div>
+                ))}
+              </div>
+
+              {/* Frosted overlay */}
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-[32px]"
+                style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(128,128,128,0.05) 30%, rgba(255,255,255,0.88) 60%)" }}
+              >
+                <div className="text-center space-y-3 px-6">
+                  <div className="w-14 h-14 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30">
+                    <Crown className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-black text-base">Upgrade to see breakdown</p>
+                    <p className="text-muted-foreground text-xs font-medium mt-1">Category-wise analysis is a Pro feature</p>
+                  </div>
+                  <Button
+                    onClick={() => showUpgradeModal("Category Breakdown")}
+                    className="h-11 px-6 rounded-2xl font-black text-sm shadow-lg shadow-indigo-500/20"
+                    style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)" }}
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    Upgrade to Pro
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
             {categoryStats.length === 0 ? (
               <div className="bg-muted/10 rounded-[32px] p-8 text-center text-muted-foreground italic font-medium">
                 No entries found for this type.
@@ -569,7 +636,8 @@ export function Dashboard() {
                 </div>
               ))
             )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Global Recent Activity */}
@@ -594,10 +662,24 @@ export function Dashboard() {
         <div className="pt-4 pb-8 space-y-6">
           <Button
             onClick={handleDownloadPDF}
-            className="w-full h-16 rounded-[24px] bg-[#5a4cf1] hover:bg-[#4a3ce1] text-lg font-black shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-3"
+            className={cn(
+              "w-full h-16 rounded-[24px] text-lg font-black flex items-center justify-center gap-3 relative",
+              isPro
+                ? "bg-[#5a4cf1] hover:bg-[#4a3ce1] shadow-xl shadow-indigo-500/20"
+                : "bg-muted text-muted-foreground cursor-pointer hover:bg-muted/80"
+            )}
           >
-            <Download className="h-6 w-6" />
+            {isPro ? (
+              <Download className="h-6 w-6" />
+            ) : (
+              <Crown className="h-6 w-6 text-amber-500" />
+            )}
             Download Detailed PDF
+            {!isPro && (
+              <span className="absolute right-5 top-1/2 -translate-y-1/2 bg-amber-500/20 text-amber-600 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-amber-500/30">
+                PRO
+              </span>
+            )}
           </Button>
 
         </div>

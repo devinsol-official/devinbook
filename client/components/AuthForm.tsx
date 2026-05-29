@@ -11,6 +11,9 @@ import { Mail, Lock, User, ArrowRight, Loader2, Sparkles, Eye, EyeOff } from "lu
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useTheme } from "next-themes"
+import { api } from "@/lib/api"
+import { startAuthentication } from "@simplewebauthn/browser"
 
 export function AuthForm() {
   const router = useRouter()
@@ -21,9 +24,9 @@ export function AuthForm() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-
   const { login, register, forgotPassword } = useAuth()
   const { toast } = useToast()
+  const { setTheme } = useTheme()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,6 +43,15 @@ export function AuthForm() {
         setIsLogin(true)
       } else if (isLogin) {
         await login(email, password)
+        const userStr = localStorage.getItem("user")
+        if (userStr) {
+          try {
+            const loggedInUser = JSON.parse(userStr)
+            if (loggedInUser.theme) {
+              setTheme(loggedInUser.theme)
+            }
+          } catch (e) {}
+        }
         toast({
           title: "Welcome back!",
           description: "Accessing your financial dashboard...",
@@ -59,6 +71,33 @@ export function AuthForm() {
         description: error instanceof Error ? error.message : "Please check your credentials",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBiometricLogin = async () => {
+    setLoading(true)
+    try {
+      // 1. Get options from server (no email passed)
+      const options = await api.getWebAuthnAuthenticationOptions(email || undefined)
+      
+      // 2. Pass options to browser to trigger native biometric prompt
+      const attResp = await startAuthentication(options)
+      
+      // 3. Send result back to server
+      const verification = await api.verifyWebAuthnAuthentication(attResp, email || undefined)
+      
+      if (verification.verified && verification.token && verification.user) {
+        localStorage.setItem("token", verification.token)
+        localStorage.setItem("user", JSON.stringify(verification.user))
+        // Force page reload to update context
+        window.location.href = "/dashboard"
+      } else {
+        throw new Error("Verification failed")
+      }
+    } catch (error: any) {
+      toast({ title: "Face ID Failed", description: error.message || "Failed to sign in with biometrics", variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -209,6 +248,22 @@ export function AuthForm() {
                 </>
               )}
             </Button>
+            
+            {isLogin && !isForgot && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBiometricLogin}
+                className="w-full h-11 rounded-xl font-bold text-md shadow-sm mt-3 group"
+                disabled={loading}
+              >
+                <div className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12Z"/><path d="M12 16.5C14.4853 16.5 16.5 14.4853 16.5 12C16.5 9.51472 14.4853 7.5 12 7.5C9.51472 7.5 7.5 9.51472 7.5 12C7.5 14.4853 9.51472 16.5 12 16.5Z"/><path d="M12 11.5V12.5"/><path d="M11.5 12H12.5"/></svg>
+                  Face ID / Fingerprint
+                </div>
+              </Button>
+            )}
+
             {isForgot && (
               <Button
                 type="button"

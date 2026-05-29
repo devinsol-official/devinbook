@@ -2,6 +2,17 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 
+// Helper: serialise user object consistently
+const formatUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  plan: user.plan || "free",
+  planActivatedAt: user.planActivatedAt || null,
+  planExpiresAt: user.planExpiresAt || null,
+  theme: user.theme || "light",
+});
+
 exports.register = async (req, res) => {
   const { name, email, password } = req.body;
   try {
@@ -14,11 +25,7 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       token: generateToken(user._id),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email
-      }
+      user: formatUser(user),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -36,11 +43,7 @@ exports.login = async (req, res) => {
 
     res.json({
       token: generateToken(user._id),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email
-      }
+      user: formatUser(user),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -61,10 +64,11 @@ exports.forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
+    const port = parseInt(process.env.SMTP_PORT || "465", 10);
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: true, // true for 465, false for others
+      port: port,
+      secure: port === 465,
       auth: {
         user: process.env.EMAIL_USERNAME,
         pass: process.env.EMAIL_PASSWORD,
@@ -75,7 +79,7 @@ exports.forgotPassword = async (req, res) => {
     const resetUrl = `${appUrl}/reset-password/${token}`;
 
     const mailOptions = {
-      from: `"DevinBook" <${process.env.EMAIL_USERNAME || "no-reply@devinsol.com"}>`,
+      from: `"DevinBook" <${process.env.EMAIL_FROM || process.env.EMAIL_USERNAME}>`,
       to: user.email,
       subject: "Password Reset Request",
       text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n` +
@@ -118,15 +122,33 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-passwordHash");
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({
-      id: user._id,
-      name: user.name,
-      email: user.email
-    });
+    res.json(formatUser(user));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateMe = async (req, res) => {
+  try {
+    const { name, theme } = req.body;
+    let user = await User.findById(req.user._id).select("-passwordHash");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (name) {
+      user.name = name;
+    }
+    if (theme) {
+      user.theme = theme;
+    }
+    
+    await user.save();
+
+    res.json(formatUser(user));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

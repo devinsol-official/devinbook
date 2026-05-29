@@ -12,12 +12,13 @@ import {
     Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import axios from 'axios';
+import axios from '../services/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { AppContext } from '../contexts/AppContext';
 import { BottomNav } from '../components/BottomNav';
 import { CONFIG } from '../constants/config';
+import { Skeleton } from '../components/Skeleton';
 
 const API_URL = CONFIG.API_URL;
 
@@ -185,8 +186,45 @@ export function CategoriesScreen() {
 
     if (loading) {
         return (
-            <View style={[styles.loadingContainer, isDarkMode && styles.containerDark]}>
-                <ActivityIndicator size="large" color="#8B5CF6" />
+            <View style={[styles.container, isDarkMode && styles.containerDark]}>
+                <LinearGradient
+                    colors={['#8B5CF6', '#A855F7', '#D946EF']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.header}
+                >
+                    <View>
+                        <Skeleton width={130} height={28} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                        <Skeleton width={170} height={14} isDarkMode={isDarkMode} style={{ marginTop: 8, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                    </View>
+                    <Skeleton width={40} height={40} borderRadius={20} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                </LinearGradient>
+                <View style={{ padding: 16 }}>
+                    {/* Filter Buttons Skeleton */}
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                        {[...Array(3)].map((_, i) => (
+                            <Skeleton key={i} width="30%" height={40} borderRadius={12} isDarkMode={isDarkMode} />
+                        ))}
+                    </View>
+                    {/* Add Buttons Row Skeleton */}
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+                        {[...Array(2)].map((_, i) => (
+                            <Skeleton key={i} width="48%" height={48} borderRadius={16} isDarkMode={isDarkMode} />
+                        ))}
+                    </View>
+                    {/* Categories List Skeleton */}
+                    <View style={{ backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF', borderRadius: 24, padding: 16 }}>
+                        {[...Array(6)].map((_, i) => (
+                            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                                <Skeleton width={56} height={56} borderRadius={16} isDarkMode={isDarkMode} style={{ marginRight: 12 }} />
+                                <View>
+                                    <Skeleton width={120} height={18} isDarkMode={isDarkMode} style={{ marginBottom: 4 }} />
+                                    <Skeleton width={60} height={12} isDarkMode={isDarkMode} />
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                </View>
             </View>
         );
     }

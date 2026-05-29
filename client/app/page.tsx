@@ -85,7 +85,7 @@ const Nav = () => {
         </Link>
 
         <div className="hidden lg:flex items-center gap-8">
-          {['Features', 'Intelligence', 'Security', 'Reports', 'Blog'].map((item) => (
+          {['Features', 'Intelligence', 'Security', 'Pricing', 'Blog'].map((item) => (
             <Link
               key={item}
               href={item === 'Blog' ? '/blog' : `#${item.toLowerCase()}`}
@@ -452,6 +452,133 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* New Capabilities Highlights */}
+        <section className="py-24 px-6 max-w-7xl mx-auto space-y-32">
+          {/* Face ID Highlight */}
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24 relative z-10">
+            <div className="flex-1 w-full relative">
+              <div className="absolute inset-0 bg-[#8B5CF6]/10 blur-[80px] rounded-full scale-110 pointer-events-none" />
+              <div className="relative aspect-square md:aspect-[4/3] rounded-[40px] bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center p-8 shadow-sm">
+                <div className="w-32 h-32 md:w-48 md:h-48 rounded-[32px] bg-white shadow-2xl flex items-center justify-center border border-slate-100 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#8B5CF6]/5 to-[#D946EF]/5 rounded-[32px]" />
+                  <Fingerprint className="w-16 h-16 md:w-24 md:h-24 text-[#8B5CF6] opacity-80" />
+                  <div className="absolute -bottom-4 bg-green-500 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3" /> Authenticated
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 space-y-6 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 text-[9px] font-bold uppercase tracking-[0.15em] text-[#8B5CF6]">
+                <Sparkles className="w-3 h-3" /> Passkey Native
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-black leading-[1.1]">
+                Zero passwords. <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] to-[#D946EF]">Infinite security.</span>
+              </h2>
+              <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-md mx-auto lg:mx-0">
+                Unlock your vault instantly. DevinBook deeply integrates with your device's native Face ID, Touch ID, and Windows Hello capabilities for frictionless, biometric entry.
+              </p>
+            </div>
+          </div>
+
+          {/* Subscriptions Highlight */}
+          <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-24 relative z-10">
+            <div className="flex-1 w-full relative">
+              <div className="absolute inset-0 bg-[#D946EF]/10 blur-[80px] rounded-full scale-110 pointer-events-none" />
+              <div className="relative aspect-square md:aspect-[4/3] rounded-[40px] bg-slate-950 border border-slate-800 overflow-hidden flex items-center justify-center p-8 shadow-2xl">
+                <div className="w-full max-w-[320px] bg-slate-900 rounded-[24px] border border-slate-800 p-6 space-y-6 shadow-2xl relative">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#8B5CF6]">DevinBook Pro</p>
+                      <h4 className="text-white font-bold text-xl">Active Plan</h4>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-green-500" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-[#8B5CF6] to-[#D946EF] w-[45%]" />
+                    </div>
+                    <p className="text-[10px] font-medium text-slate-400">14 days remaining in cycle</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 space-y-6 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100 text-[9px] font-bold uppercase tracking-[0.15em] text-[#D946EF]">
+                <Zap className="w-3 h-3" /> Pro Engine
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-black leading-[1.1]">
+                Scale your analysis <br />
+                <span className="text-[#A855F7]">on demand.</span>
+              </h2>
+              <p className="text-slate-500 text-lg font-medium leading-relaxed max-w-md mx-auto lg:mx-0">
+                Outgrow standard ledgers. Upgrade to DevinBook Pro directly in the app to shatter category limits, access institutional-grade PDF reports, and activate deep analytics panels.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="py-24 px-6 max-w-7xl mx-auto scroll-mt-24">
+          <div className="text-center space-y-4 mb-16">
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-black leading-[1.1]">Simple, transparent pricing.</h2>
+            <p className="text-slate-500 text-lg font-medium max-w-xl mx-auto">Start mastering your wealth today.</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Free */}
+            <div className="p-10 rounded-[40px] bg-white border border-slate-200 shadow-sm flex flex-col group hover:border-[#8B5CF6]/30 transition-colors">
+               <h3 className="text-2xl font-bold tracking-tight">Standard</h3>
+               <div className="mt-4 text-5xl font-black">$0 <span className="text-lg text-slate-400 font-medium">/ forever</span></div>
+               <p className="mt-4 text-slate-500 font-medium">Perfect for getting your daily flow in order.</p>
+               <ul className="mt-10 space-y-5 flex-1">
+                 {[
+                   'Up to 5 transaction categories',
+                   'Basic daily burn analysis',
+                   'Cloud-synced database',
+                   'Standard Email/Password entry',
+                   'Mobile-optimized interface'
+                 ].map((feature, i) => (
+                   <li key={i} className="flex items-center gap-3 text-slate-600 font-medium text-sm">
+                     <CheckCircle2 className="w-5 h-5 text-slate-300" />
+                     {feature}
+                   </li>
+                 ))}
+               </ul>
+               <PremiumButton href="/register" variant="outline" className="w-full mt-10 h-14">Get Started for Free</PremiumButton>
+            </div>
+            
+            {/* Pro */}
+            <div className="p-10 rounded-[40px] bg-slate-950 text-white flex flex-col relative overflow-hidden shadow-2xl shadow-[#8B5CF6]/10 transform md:-translate-y-4">
+               <div className="absolute top-0 right-0 p-6">
+                 <span className="bg-gradient-to-r from-[#8B5CF6] to-[#D946EF] text-white text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-lg">Recommended</span>
+               </div>
+               <div className="absolute inset-0 bg-[#8B5CF6]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+               <h3 className="text-2xl font-bold tracking-tight">Pro</h3>
+               <div className="mt-4 text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">$7 <span className="text-lg text-white/40 font-medium">/ month</span></div>
+               <p className="mt-4 text-white/60 font-medium">Unlock your financial data's true potential.</p>
+               <ul className="mt-10 space-y-5 flex-1">
+                 {[
+                   'Unlimited transaction categories',
+                   'Biometric Face ID / Touch ID entry',
+                   'Institutional-grade PDF Reports',
+                   'Advanced deep analytics panels',
+                   'Priority feature access'
+                 ].map((feature, i) => (
+                   <li key={i} className="flex items-center gap-3 text-slate-300 font-medium text-sm">
+                     <CheckCircle2 className="w-5 h-5 text-[#8B5CF6]" />
+                     {feature}
+                   </li>
+                 ))}
+               </ul>
+               <PremiumButton href="/register" className="w-full mt-10 h-14">Upgrade to Pro</PremiumButton>
+            </div>
           </div>
         </section>
 

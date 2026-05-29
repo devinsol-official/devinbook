@@ -1,22 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import {
-    View,
-    Text,
-    ScrollView,
-    TouchableOpacity,
-    StyleSheet,
-    ActivityIndicator,
-    TextInput,
-    Alert,
-    Modal,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-} from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Modal, Platform, Dimensions, TextInput, KeyboardAvoidingView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
+import axios from '../services/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppContext } from '../contexts/AppContext';
 import { CONFIG } from '../constants/config';
@@ -36,19 +22,23 @@ interface Account {
     balance: number;
 }
 
+const { width, height } = Dimensions.get('window');
+
 export function AddTransactionModal() {
-    const { isAddModalVisible, setAddModalVisible, refreshData, logout, editingTransaction, initialType, isDarkMode } = useContext(AppContext);
+    const { isAddModalVisible, setAddModalVisible, refreshData, logout, initialType, isDarkMode, navigateTo, editingTransaction } = useContext(AppContext);
+
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
-    const [amount, setAmount] = useState('');
-    const [description, setDescription] = useState('');
+    // UI state
     const [type, setType] = useState<'income' | 'expense'>('expense');
-    const [categoryId, setCategoryId] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+    const [amount, setAmount] = useState('0');
     const [accountId, setAccountId] = useState('');
-    const [date, setDate] = useState(new Date());
-    const [showPicker, setShowPicker] = useState(false);
-    const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
+
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [submittingCategory, setSubmittingCategory] = useState(false);
 
     const [categories, setCategories] = useState<Category[]>([]);
     const [accounts, setAccounts] = useState<Account[]>([]);
@@ -56,18 +46,14 @@ export function AddTransactionModal() {
     useEffect(() => {
         if (isAddModalVisible) {
             if (editingTransaction) {
-                setAmount(editingTransaction.amount.toString());
-                setDescription(editingTransaction.description || '');
                 setType(editingTransaction.type);
-                setCategoryId(editingTransaction.categoryId?._id || editingTransaction.categoryId || '');
+                setAmount(editingTransaction.amount.toString());
                 setAccountId(editingTransaction.accountId?._id || editingTransaction.accountId || '');
-                setDate(new Date(editingTransaction.date));
+                // Try to find full category object after data loads
             } else {
-                setAmount('');
-                setDescription('');
                 setType(initialType || 'expense');
-                setCategoryId('');
-                setDate(new Date());
+                setSelectedCategory(null);
+                setAmount('0');
             }
             loadData();
         }
@@ -82,10 +68,7 @@ export function AddTransactionModal() {
                 return;
             }
 
-            const config = {
-                headers: { Authorization: `Bearer ${token}` }
-            };
-
+            const config = { headers: { Authorization: `Bearer ${token}` } };
             const [catsRes, accsRes] = await Promise.all([
                 axios.get(`${API_URL}/categories`, config),
                 axios.get(`${API_URL}/accounts`, config)
@@ -94,46 +77,51 @@ export function AddTransactionModal() {
             setCategories(catsRes.data);
             setAccounts(accsRes.data);
 
-            if (!editingTransaction && accsRes.data.length > 0) {
+            if (editingTransaction) {
+                const catId = editingTransaction.categoryId?._id || editingTransaction.categoryId;
+                const foundCat = catsRes.data.find((c: any) => c._id === catId || c.id === catId);
+                if (foundCat) setSelectedCategory(foundCat);
+            }
+
+            if (accsRes.data.length > 0 && !accountId && !editingTransaction) {
                 setAccountId(accsRes.data[0]._id);
             }
-        } catch (error: any) {
-            Alert.alert('Error', 'Failed to load data');
+        } catch (error) {
+            console.error(error);
         } finally {
             setLoading(false);
         }
     };
 
+    const handleNumberPress = (num: string) => {
+        if (amount.length > 10) return;
+        setAmount(prev => {
+            if (prev === '0') return num === '.' ? '0.' : num;
+            if (num === '.' && prev.includes('.')) return prev;
+            return prev + num;
+        });
+    };
+
+    const handleBackspace = () => {
+        setAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+    };
+
     const handleSave = async () => {
-        if (!amount || isNaN(parseFloat(amount))) {
-            Alert.alert('Error', 'Please enter a valid amount');
-            return;
-        }
-
-        if (!categoryId) {
-            Alert.alert('Error', 'Please select a category');
-            return;
-        }
-
-        if (!accountId) {
-            Alert.alert('Error', 'Please select an account');
-            return;
-        }
+        if (amount === '0' || amount === '0.' || isNaN(parseFloat(amount))) return;
+        if (!selectedCategory || !accountId) return;
 
         setSubmitting(true);
         try {
             const token = await AsyncStorage.getItem('authToken');
-            const config = {
-                headers: { Authorization: `Bearer ${token}` }
-            };
+            const config = { headers: { Authorization: `Bearer ${token}` } };
 
             const payload = {
                 amount: parseFloat(amount),
-                description,
                 type,
-                categoryId,
+                categoryId: selectedCategory._id,
                 accountId,
-                date: date.toISOString(),
+                date: editingTransaction ? editingTransaction.date : new Date().toISOString(),
+                description: selectedCategory.name
             };
 
             if (editingTransaction) {
@@ -142,575 +130,452 @@ export function AddTransactionModal() {
                 await axios.post(`${API_URL}/transactions`, payload, config);
             }
 
+            setSelectedCategory(null);
+            setAmount('0');
             setAddModalVisible(false);
             refreshData();
-        } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Failed to save transaction');
+        } catch (error) {
+            console.error(error);
         } finally {
             setSubmitting(false);
         }
     };
 
-    const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        if (event.type === 'dismissed') {
-            setShowPicker(false);
-            return;
-        }
-
-        if (selectedDate) {
-            // Merge time if in date mode, merge date if in time mode
-            const newDate = new Date(date);
-            if (pickerMode === 'date') {
-                newDate.setFullYear(selectedDate.getFullYear());
-                newDate.setMonth(selectedDate.getMonth());
-                newDate.setDate(selectedDate.getDate());
-            } else {
-                newDate.setHours(selectedDate.getHours());
-                newDate.setMinutes(selectedDate.getMinutes());
-            }
-            setDate(newDate);
-
-            // On Android, date and time pickers are separate dialogs
-            if (Platform.OS === 'android') {
-                setShowPicker(false);
-            }
-        }
-    };
-
-    const showPickerHandler = (mode: 'date' | 'time') => {
-        setPickerMode(mode);
-        setShowPicker(true);
-    };
-
-    const formatDate = (d: Date) => {
-        return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-    };
-
-    const formatTime = (d: Date) => {
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    };
-
     const filteredCategories = categories.filter(c => c.type === type);
 
-    return (
-        <Modal
-            visible={isAddModalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setAddModalVisible(false)}
-        >
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.modalOverlay}
-            >
-                <View style={{ flex: 1 }}>
-                    <TouchableOpacity
-                        style={styles.dismissArea}
-                        activeOpacity={1}
-                        onPress={() => setAddModalVisible(false)}
-                    />
-                    <View style={[styles.modalContent, isDarkMode && styles.modalContentDark]}>
-                        <View style={[styles.modalHeader, isDarkMode && styles.modalHeaderDark]}>
-                            <View style={styles.headerBar} />
-                            <View style={styles.headerTitleRow}>
-                                <Text style={[styles.modalTitle, isDarkMode && styles.textWhite]}>
-                                    {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
-                                </Text>
-                                <TouchableOpacity onPress={() => setAddModalVisible(false)}>
-                                    <Ionicons name="close-circle" size={28} color="#94A3B8" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+    const handleCreateCategory = async () => {
+        if (!newCategoryName.trim()) return;
+        setSubmittingCategory(true);
+        try {
+            const token = await AsyncStorage.getItem('authToken');
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const payload = {
+                name: newCategoryName.trim(),
+                type,
+                icon: 'cube',
+            };
+            const res = await axios.post(`${API_URL}/categories`, payload, config);
+            setCategories([...categories, res.data.category || res.data]);
+            setIsCreatingCategory(false);
+            setNewCategoryName('');
+            setSelectedCategory(res.data.category || res.data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setSubmittingCategory(false);
+        }
+    };
 
-                        {loading ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color="#8B5CF6" />
-                            </View>
-                        ) : (
-                            <ScrollView
-                                style={styles.body}
-                                contentContainerStyle={styles.bodyContent}
-                                showsVerticalScrollIndicator={false}
-                            >
-                                {/* Type Selector */}
-                                <View style={styles.typeSelector}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.typeButton,
-                                            isDarkMode && styles.inputDark,
-                                            type === 'expense' && styles.typeButtonActiveExpense
-                                        ]}
-                                        onPress={() => {
-                                            setType('expense');
-                                            setCategoryId('');
-                                        }}
-                                        activeOpacity={0.8}
-                                    >
-                                        <View style={[styles.typeIconContainer, type === 'expense' && styles.typeIconContainerActiveExpense]}>
-                                            <Ionicons name="arrow-up-circle" size={20} color={type === 'expense' ? '#FFFFFF' : '#EF4444'} />
-                                        </View>
-                                        <Text style={[styles.typeButtonText, type === 'expense' && styles.typeButtonTextActive]}>Expense</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.typeButton, type === 'income' && styles.typeButtonActiveIncome]}
-                                        onPress={() => {
-                                            setType('income');
-                                            setCategoryId('');
-                                        }}
-                                        activeOpacity={0.8}
-                                    >
-                                        <View style={[styles.typeIconContainer, type === 'income' && styles.typeIconContainerActiveIncome]}>
-                                            <Ionicons name="arrow-down-circle" size={20} color={type === 'income' ? '#FFFFFF' : '#22C55E'} />
-                                        </View>
-                                        <Text style={[styles.typeButtonText, type === 'income' && styles.typeButtonTextActive]}>Income</Text>
-                                    </TouchableOpacity>
-                                </View>
+    const renderCreateCategoryPopup = () => {
+        if (!isCreatingCategory) return null;
+        return (
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[StyleSheet.absoluteFill, styles.popupOverlay]}>
+                <View style={[styles.popupContent, isDarkMode && styles.popupContentDark, { paddingBottom: Platform.OS === 'ios' ? 60 : 40 }]}>
+                    <View style={styles.popupHeader}>
+                        <TouchableOpacity onPress={() => { setIsCreatingCategory(false); setNewCategoryName(''); }} style={styles.closePopupBtn}>
+                            <Ionicons name="close" size={24} color={isDarkMode ? "#94A3B8" : "#64748B"} />
+                        </TouchableOpacity>
+                        <Text style={[styles.popupTitle, isDarkMode && styles.textWhite]}>
+                            New {type === 'income' ? 'Income' : 'Expense'} Category
+                        </Text>
+                        <View style={{ width: 32 }} />
+                    </View>
 
-                                {/* Amount Input */}
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, isDarkMode && styles.textGray]}>Amount (Rs)</Text>
-                                    <TextInput
-                                        style={[styles.amountInput, isDarkMode && styles.textWhite, isDarkMode && styles.borderDark]}
-                                        value={amount}
-                                        onChangeText={setAmount}
-                                        keyboardType="numeric"
-                                        placeholder="0.00"
-                                        placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
-                                        autoFocus
-                                    />
-                                </View>
-
-                                {/* Account Selector */}
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, isDarkMode && styles.textGray]}>Account</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountScroller}>
-                                        {accounts.map(acc => (
-                                            <TouchableOpacity
-                                                key={acc._id}
-                                                style={[styles.accountItem, accountId === acc._id && styles.accountItemActive]}
-                                                onPress={() => setAccountId(acc._id)}
-                                                activeOpacity={0.8}
-                                            >
-                                                <View style={[styles.accountIconCircle, accountId === acc._id && styles.accountIconCircleActive]}>
-                                                    <Ionicons name="wallet" size={16} color={accountId === acc._id ? '#8B5CF6' : '#64748B'} />
-                                                </View>
-                                                <Text style={[styles.accountLabel, accountId === acc._id && styles.accountLabelActive]}>{acc.name}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </ScrollView>
-                                </View>
-
-                                {/* Category Selector */}
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, isDarkMode && styles.textGray]}>Category</Text>
-                                    <View style={styles.selectorGrid}>
-                                        {filteredCategories.map(cat => (
-                                            <TouchableOpacity
-                                                key={cat._id}
-                                                style={[
-                                                    styles.selectorItem,
-                                                    isDarkMode && styles.selectorItemDark,
-                                                    categoryId === cat._id && styles.selectorItemActive
-                                                ]}
-                                                onPress={() => setCategoryId(cat._id)}
-                                                activeOpacity={0.7}
-                                            >
-                                                <View style={[styles.iconContainer, categoryId === cat._id && styles.iconContainerActive]}>
-                                                    {cat.icon && cat.icon.length > 2 ? (
-                                                        <Ionicons
-                                                            name={(cat.icon as any)}
-                                                            size={22}
-                                                            color={categoryId === cat._id ? '#8B5CF6' : '#64748B'}
-                                                        />
-                                                    ) : (
-                                                        <Text style={styles.selectorIconEmoji}>{cat.icon || '📊'}</Text>
-                                                    )}
-                                                </View>
-                                                <Text style={[styles.selectorLabel, categoryId === cat._id && styles.selectorLabelActive]} numberOfLines={1}>
-                                                    {cat.name}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
-
-                                {/* Description Input */}
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, isDarkMode && styles.textGray]}>Description</Text>
-                                    <TextInput
-                                        style={[styles.input, isDarkMode && styles.inputDark]}
-                                        value={description}
-                                        onChangeText={setDescription}
-                                        placeholder="What was this for?"
-                                        placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
-                                    />
-                                </View>
-
-                                {/* Date & Time Input */}
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, isDarkMode && styles.textGray]}>Date & Time</Text>
-                                    <View style={styles.dateTimeRow}>
-                                        <TouchableOpacity
-                                            style={[styles.dateTimeButton, isDarkMode && styles.inputDark]}
-                                            onPress={() => showPickerHandler('date')}
-                                        >
-                                            <Ionicons name="calendar-outline" size={20} color="#8B5CF6" />
-                                            <Text style={[styles.dateTimeText, isDarkMode && styles.textWhite]}>{formatDate(date)}</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.dateTimeButton, isDarkMode && styles.inputDark]}
-                                            onPress={() => showPickerHandler('time')}
-                                        >
-                                            <Ionicons name="time-outline" size={20} color="#8B5CF6" />
-                                            <Text style={[styles.dateTimeText, isDarkMode && styles.textWhite]}>{formatTime(date)}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    {showPicker && (
-                                        <DateTimePicker
-                                            value={date}
-                                            mode={pickerMode}
-                                            is24Hour={true}
-                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                            onChange={onDateChange}
-                                        />
-                                    )}
-                                </View>
-
-                            </ScrollView>
-                        )}
-
-                        {!loading && (
-                            <View style={[styles.modalFooter, isDarkMode && styles.modalHeaderDark]}>
-                                <TouchableOpacity
-                                    style={[styles.saveButton, submitting && styles.saveButtonDisabled]}
-                                    onPress={handleSave}
-                                    disabled={submitting}
-                                    activeOpacity={0.9}
-                                >
-                                    {submitting ? (
-                                        <ActivityIndicator color="#FFFFFF" />
-                                    ) : (
-                                        <Text style={styles.saveButtonText}>
-                                            {editingTransaction ? 'Update Transaction' : 'Add Transaction'}
-                                        </Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        )}
+                    <View style={{ padding: 24 }}>
+                        <Text style={[{ fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 8, textTransform: 'uppercase' }, isDarkMode && styles.textGray]}>
+                            Category Name
+                        </Text>
+                        <TextInput
+                            style={[{ height: 56, backgroundColor: '#F8FAFC', borderRadius: 16, paddingHorizontal: 16, fontSize: 16, color: '#0F172A', fontWeight: '600', borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 24 }, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#FFFFFF' }]}
+                            placeholder="e.g. Shopping, Utilities..."
+                            placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
+                            value={newCategoryName}
+                            onChangeText={setNewCategoryName}
+                            autoFocus
+                        />
+                        <TouchableOpacity
+                            style={[styles.submitButton, submittingCategory && styles.submitButtonDisabled]}
+                            onPress={handleCreateCategory}
+                            disabled={submittingCategory}
+                        >
+                            {submittingCategory ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>Create Category</Text>}
+                        </TouchableOpacity>
                     </View>
                 </View>
             </KeyboardAvoidingView>
-        </Modal >
+        );
+    };
+
+    const renderNumpadPopup = () => {
+        if (!selectedCategory) return null;
+        return (
+            <View style={[StyleSheet.absoluteFill, styles.popupOverlay]}>
+                <View style={[styles.popupContent, isDarkMode && styles.popupContentDark]}>
+                    <View style={styles.popupHeader}>
+                        <TouchableOpacity onPress={() => { setSelectedCategory(null); setAmount('0'); }} style={styles.closePopupBtn}>
+                            <Ionicons name="close" size={24} color={isDarkMode ? "#94A3B8" : "#64748B"} />
+                        </TouchableOpacity>
+                        <Text style={[styles.popupTitle, isDarkMode && styles.textWhite]}>
+                            {selectedCategory?.name}
+                        </Text>
+                        <View style={{ width: 32 }} />
+                    </View>
+
+                    {/* Account Selector */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountScroller} contentContainerStyle={{ paddingHorizontal: 20 }}>
+                        {accounts.map(acc => (
+                            <TouchableOpacity
+                                key={acc._id}
+                                style={[styles.accountItem, isDarkMode && styles.accountItemDark, accountId === acc._id && styles.accountItemActive]}
+                                onPress={() => setAccountId(acc._id)}
+                            >
+                                <Ionicons name="wallet" size={16} color={accountId === acc._id ? '#8B5CF6' : (isDarkMode ? '#64748B' : '#94A3B8')} />
+                                <Text style={[styles.accountLabel, isDarkMode && styles.textGray, accountId === acc._id && styles.accountLabelActive]}>{acc.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
+                    {/* Amount Display */}
+                    <View style={styles.amountContainer}>
+                        <Text style={[styles.currencySymbol, { color: type === 'expense' ? '#EF4444' : '#22C55E' }]}>Rs</Text>
+                        <Text style={[styles.amountText, isDarkMode && styles.textWhite, { fontSize: amount.length > 7 ? 40 : 64 }]} numberOfLines={1} adjustsFontSizeToFit>{amount}</Text>
+                    </View>
+
+                    {/* Numpad */}
+                    <View style={styles.numpad}>
+                        {[['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['.', '0', 'back']].map((row, i) => (
+                            <View key={i} style={styles.numRow}>
+                                {row.map(btn => (
+                                    <TouchableOpacity
+                                        key={btn}
+                                        style={[styles.numButton, isDarkMode && styles.numButtonDark]}
+                                        onPress={() => btn === 'back' ? handleBackspace() : handleNumberPress(btn)}
+                                        activeOpacity={0.7}
+                                    >
+                                        {btn === 'back' ? (
+                                            <Ionicons name="backspace-outline" size={28} color={isDarkMode ? "#E2E8F0" : "#0F172A"} />
+                                        ) : (
+                                            <Text style={[styles.numText, isDarkMode && styles.textWhite]}>{btn}</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        ))}
+                    </View>
+
+                    {/* Add Transaction Button */}
+                    <View style={styles.popupFooter}>
+                        <TouchableOpacity style={[styles.submitButton, submitting && styles.submitButtonDisabled]} onPress={handleSave} disabled={submitting}>
+                            {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitButtonText}>{editingTransaction ? 'Update Transaction' : 'Add Transaction'}</Text>}
+                        </TouchableOpacity>
+                    </View>
+
+                </View>
+            </View>
+        );
+    };
+
+    return (
+        <Modal visible={isAddModalVisible} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setAddModalVisible(false)}>
+            <SafeAreaView style={[styles.fullScreen, isDarkMode && styles.fullScreenDark]}>
+                <View style={styles.topHeader}>
+                    <TouchableOpacity onPress={() => setAddModalVisible(false)} style={styles.closeBtn}>
+                        <Ionicons name="close" size={28} color={isDarkMode ? "#E2E8F0" : "#0F172A"} />
+                    </TouchableOpacity>
+                    <Text style={[styles.mainTitle, isDarkMode && styles.textWhite]}>{editingTransaction ? 'Edit Transaction' : 'Select Category'}</Text>
+                    <View style={{ width: 28 }} />
+                </View>
+
+                {/* Tabs */}
+                <View style={styles.tabsRow}>
+                    <TouchableOpacity
+                        style={[styles.tabBtn, type === 'expense' && styles.tabBtnActiveExpense]}
+                        onPress={() => setType('expense')}
+                    >
+                        <Text style={[styles.tabText, isDarkMode && styles.textGray, type === 'expense' && styles.tabTextActiveExpense]}>Expense</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tabBtn, type === 'income' && styles.tabBtnActiveIncome]}
+                        onPress={() => setType('income')}
+                    >
+                        <Text style={[styles.tabText, isDarkMode && styles.textGray, type === 'income' && styles.tabTextActiveIncome]}>Income</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {loading ? (
+                    <ActivityIndicator size="large" color="#8B5CF6" style={{ marginTop: 50 }} />
+                ) : (
+                    <ScrollView contentContainerStyle={styles.gridContainer} showsVerticalScrollIndicator={false}>
+                        {filteredCategories.map(cat => (
+                            <TouchableOpacity
+                                key={cat._id}
+                                style={[styles.catBox, isDarkMode && styles.catBoxDark]}
+                                onPress={() => setSelectedCategory(cat)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.catIconCircle, { backgroundColor: type === 'income' ? '#DCFCE7' : '#FEE2E2' }]}>
+                                    {cat.icon && cat.icon.length > 2 ? (
+                                        <Ionicons name={(cat.icon as any)} size={24} color={type === 'income' ? '#16A34A' : '#DC2626'} />
+                                    ) : (
+                                        <Text style={{ fontSize: 24 }}>{cat.icon || '💰'}</Text>
+                                    )}
+                                </View>
+                                <Text style={[styles.catName, isDarkMode && styles.textWhite]} numberOfLines={1}>{cat.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+
+                        <TouchableOpacity
+                            style={[styles.catBox, isDarkMode && styles.catBoxDark]}
+                            onPress={() => {
+                                setIsCreatingCategory(true);
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[styles.catIconCircle, { backgroundColor: isDarkMode ? '#334155' : '#F1F5F9', borderStyle: 'dashed', borderWidth: 2, borderColor: '#CBD5E1' }]}>
+                                <Ionicons name="add" size={24} color={isDarkMode ? "#94A3B8" : "#64748B"} />
+                            </View>
+                            <Text style={[styles.catName, isDarkMode && styles.textGray]}>New Category</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                )}
+
+                {renderNumpadPopup()}
+                {renderCreateCategoryPopup()}
+            </SafeAreaView>
+        </Modal>
     );
 }
 
 const styles = StyleSheet.create({
-    modalOverlay: {
+    fullScreen: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    dismissArea: {
-        flex: 1,
-    },
-    modalContent: {
         backgroundColor: '#F8FAFC',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        maxHeight: '90%',
-        minHeight: '60%',
     },
-    modalHeader: {
-        padding: 20,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
+    fullScreenDark: {
+        backgroundColor: '#0F172A',
     },
-    headerBar: {
-        width: 40,
-        height: 4,
-        backgroundColor: '#E2E8F0',
-        borderRadius: 2,
-        marginBottom: 16,
-    },
-    headerTitleRow: {
+    topHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        width: '100%',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'android' ? 20 : 10,
+        paddingBottom: 20,
     },
-    modalTitle: {
-        fontSize: 20,
+    closeBtn: {
+        padding: 4,
+    },
+    mainTitle: {
+        fontSize: 18,
         fontWeight: '900',
         color: '#0F172A',
     },
-    loadingContainer: {
-        padding: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    body: {
-        flex: 1,
-    },
-    bodyContent: {
-        padding: 24,
-        paddingBottom: 40,
-    },
-    typeSelector: {
+    tabsRow: {
         flexDirection: 'row',
-        gap: 12,
-        marginBottom: 24,
-    },
-    typeButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 12,
-        borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 2,
-        borderColor: '#F1F5F9',
-        gap: 10,
-    },
-    typeButtonActiveExpense: {
-        backgroundColor: '#FEF2F2',
-        borderColor: '#FECACA',
-    },
-    typeButtonActiveIncome: {
-        backgroundColor: '#F0FDF4',
-        borderColor: '#BBF7D0',
-    },
-    typeIconContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        backgroundColor: '#F8FAFC',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    typeIconContainerActiveExpense: {
-        backgroundColor: '#EF4444',
-    },
-    typeIconContainerActiveIncome: {
-        backgroundColor: '#22C55E',
-    },
-    typeButtonText: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#64748B',
-    },
-    typeButtonTextActive: {
-        color: '#0F172A',
-    },
-    inputGroup: {
+        marginHorizontal: 20,
+        padding: 4,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 16,
         marginBottom: 20,
     },
-    label: {
+    tabBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    tabBtnActiveExpense: {
+        backgroundColor: '#EF4444',
+    },
+    tabBtnActiveIncome: {
+        backgroundColor: '#22C55E',
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#64748B',
+    },
+    tabTextActiveExpense: {
+        color: '#FFFFFF',
+    },
+    tabTextActiveIncome: {
+        color: '#FFFFFF',
+    },
+    gridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingHorizontal: 16,
+        paddingBottom: 100,
+        justifyContent: 'flex-start',
+    },
+    catBox: {
+        width: '25%',
+        padding: 8,
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    catBoxDark: {
+        // ...
+    },
+    catIconCircle: {
+        width: 56,
+        height: 56,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    catName: {
         fontSize: 12,
         fontWeight: '700',
         color: '#0F172A',
-        marginBottom: 8,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
+        textAlign: 'center',
     },
-    amountInput: {
-        fontSize: 36,
-        fontWeight: '900',
-        color: '#0F172A',
-        borderBottomWidth: 2,
-        borderBottomColor: '#E2E8F0',
-        paddingVertical: 8,
-    },
-    input: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        fontSize: 14,
-        color: '#0F172A',
-        borderWidth: 2,
-        borderColor: '#F1F5F9',
-    },
-    dateTimeRow: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    dateTimeButton: {
+
+    // Popup Layout
+    popupOverlay: {
         flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    popupContent: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderWidth: 2,
-        borderColor: '#F1F5F9',
-        gap: 8,
-    },
-    dateTimeText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#0F172A',
-    },
-    selectorGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-    },
-    selectorItem: {
-        width: '31%',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#F1F5F9',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
         paddingTop: 10,
-        paddingBottom: 14,
-        paddingHorizontal: 8,
-        shadowColor: '#64748B',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
+        maxHeight: '90%',
     },
-    selectorItemActive: {
-        borderColor: '#8B5CF6',
-        backgroundColor: '#F5F3FF',
-        elevation: 4,
-        shadowOpacity: 0.1,
+    popupContentDark: {
+        backgroundColor: '#1E293B',
     },
-    iconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        backgroundColor: '#F8FAFC',
+    popupHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    closePopupBtn: {
+        padding: 4,
+        backgroundColor: '#F1F5F9',
+        borderRadius: 16,
+    },
+    savePopupBtn: {
+        padding: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#8B5CF6',
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 6,
     },
-    iconContainerActive: {
-        backgroundColor: '#FFFFFF',
-    },
-    selectorIconEmoji: {
-        fontSize: 20,
-    },
-    selectorLabel: {
-        fontSize: 10,
+    popupTitle: {
+        fontSize: 18,
         fontWeight: '800',
-        color: '#64748B',
-        textAlign: 'center',
-        width: '100%',
+        color: '#0F172A',
     },
-    selectorLabelActive: {
-        color: '#8B5CF6',
-    },
+
     accountScroller: {
-        flexDirection: 'row',
+        maxHeight: 60,
+        minHeight: 60,
+        marginTop: 16,
     },
     accountItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        paddingHorizontal: 16,
         paddingVertical: 10,
-        paddingHorizontal: 14,
+        borderRadius: 16,
+        backgroundColor: '#F8FAFC',
         marginRight: 10,
-        borderWidth: 2,
-        borderColor: '#F1F5F9',
-        shadowColor: '#64748B',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 1,
+        alignSelf: 'center',
+    },
+    accountItemDark: {
+        backgroundColor: '#0F172A',
     },
     accountItemActive: {
         backgroundColor: '#F5F3FF',
-        borderColor: '#C4B5FD',
-    },
-    accountIconCircle: {
-        width: 28,
-        height: 28,
-        borderRadius: 9,
-        backgroundColor: '#F8FAFC',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    accountIconCircleActive: {
-        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#8B5CF6',
     },
     accountLabel: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: '#64748B',
+        marginLeft: 8,
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#0F172A',
     },
     accountLabelActive: {
         color: '#8B5CF6',
     },
-    modalFooter: {
-        padding: 24,
-        paddingTop: 16,
-        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-        backgroundColor: '#FFFFFF',
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -10 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 10,
+
+    amountContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'baseline',
+        paddingVertical: 32,
+        paddingHorizontal: 20,
     },
-    saveButton: {
-        backgroundColor: '#8B5CF6',
-        borderRadius: 22,
-        height: 64,
+    currencySymbol: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginRight: 8,
+    },
+    amountText: {
+        fontSize: 64,
+        fontWeight: '900',
+        color: '#0F172A',
+    },
+
+    numpad: {
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+    },
+    numRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    numButton: {
+        width: '31%',
+        aspectRatio: 1.5,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
     },
-    saveButtonDisabled: {
-        opacity: 0.6,
-    },
-    saveButtonText: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: '#FFFFFF',
-        letterSpacing: 0.5,
-    },
-    // Dark Mode Styles
-    modalContentDark: {
+    numButtonDark: {
         backgroundColor: '#0F172A',
     },
-    modalHeaderDark: {
-        backgroundColor: '#1E293B',
-        borderBottomColor: '#334155',
-        borderTopColor: '#334155',
+    numText: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#0F172A',
     },
-    textWhite: {
+
+    popupFooter: {
+        paddingHorizontal: 20,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    },
+    submitButton: {
+        backgroundColor: '#8B5CF6',
+        borderRadius: 16,
+        paddingVertical: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    submitButtonDisabled: {
+        opacity: 0.7,
+    },
+    submitButtonText: {
         color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
-    textGray: {
-        color: '#94A3B8',
-    },
-    inputDark: {
-        backgroundColor: '#1E293B',
-        borderColor: '#334155',
-        color: '#FFFFFF',
-    },
-    borderDark: {
-        borderBottomColor: '#334155',
-    },
-    selectorItemDark: {
-        backgroundColor: '#1E293B',
-        borderColor: '#334155',
-    },
+
+    // basic colors for dark theme overrides built-in:
+    textWhite: { color: '#FFFFFF' },
+    textGray: { color: '#94A3B8' },
 });

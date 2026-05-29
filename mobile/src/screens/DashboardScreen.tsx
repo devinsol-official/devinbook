@@ -11,13 +11,15 @@ import {
     Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import axios from 'axios';
+import axios from '../services/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { AppContext } from '../contexts/AppContext';
 import { BottomNav } from '../components/BottomNav';
 import { CONFIG } from '../constants/config';
 import { TransactionItem } from '../components/TransactionItem';
+import Logo from '../../assets/logo.svg';
+import { Skeleton } from '../components/Skeleton';
 
 const API_URL = CONFIG.API_URL;
 
@@ -176,8 +178,40 @@ export function DashboardScreen() {
 
     if (loading) {
         return (
-            <View style={[styles.loadingContainer, isDarkMode && styles.containerDark]}>
-                <ActivityIndicator size="large" color="#8B5CF6" />
+            <View style={[styles.container, isDarkMode && styles.containerDark]}>
+                <LinearGradient
+                    colors={['#8B5CF6', '#A855F7', '#D946EF']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.header}
+                >
+                    <View style={styles.headerTitleContainer}>
+                        <Skeleton width={40} height={40} borderRadius={20} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                        <View style={{ marginLeft: 12 }}>
+                            <Skeleton width={100} height={20} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                            <Skeleton width={140} height={14} isDarkMode={isDarkMode} style={{ marginTop: 4, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                        </View>
+                    </View>
+                    <Skeleton width={48} height={48} borderRadius={24} isDarkMode={isDarkMode} style={{ backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                </LinearGradient>
+                <View style={styles.content}>
+                    <View style={{ flexDirection: 'row', marginBottom: 24, paddingHorizontal: 16 }}>
+                        {[...Array(5)].map((_, i) => (
+                            <Skeleton key={i} width={70} height={36} borderRadius={20} isDarkMode={isDarkMode} style={{ marginRight: 8 }} />
+                        ))}
+                    </View>
+                    <View style={{ paddingHorizontal: 16 }}>
+                        <Skeleton width="100%" height={140} borderRadius={24} isDarkMode={isDarkMode} style={{ marginBottom: 24 }} />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
+                            <Skeleton width="48%" height={100} borderRadius={24} isDarkMode={isDarkMode} />
+                            <Skeleton width="48%" height={100} borderRadius={24} isDarkMode={isDarkMode} />
+                        </View>
+                        <Skeleton width={150} height={24} isDarkMode={isDarkMode} style={{ marginBottom: 16 }} />
+                        {[...Array(4)].map((_, i) => (
+                            <Skeleton key={i} width="100%" height={80} borderRadius={16} isDarkMode={isDarkMode} style={{ marginBottom: 16 }} />
+                        ))}
+                    </View>
+                </View>
             </View>
         );
     }
@@ -202,9 +236,12 @@ export function DashboardScreen() {
                     end={{ x: 1, y: 0 }}
                     style={styles.header}
                 >
-                    <View>
-                        <Text style={styles.headerTitle}>DevinBook</Text>
-                        <Text style={styles.headerSubtitle}>Welcome, {user?.name}!</Text>
+                    <View style={styles.headerTitleContainer}>
+                        <Logo width={40} height={40} style={styles.headerLogo} />
+                        <View>
+                            <Text style={styles.headerTitle}>DevinBook</Text>
+                            <Text style={styles.headerSubtitle}>Welcome, {user?.name}!</Text>
+                        </View>
                     </View>
                     <TouchableOpacity onPress={() => navigateTo('profile')} style={styles.profileButton}>
                         <Image
@@ -412,6 +449,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+    },
+    headerTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    headerLogo: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        marginRight: 12,
     },
     headerTitle: {
         fontSize: 24,
