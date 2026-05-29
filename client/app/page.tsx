@@ -38,30 +38,26 @@ const PremiumButton = ({ children, href, variant = "primary", className = "", si
   const isPrimary = variant === "primary"
 
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      whileTap={{ scale: 0.98 }}
-    >
-      <Button asChild className={`
-        relative overflow-hidden font-bold tracking-tight transition-all duration-300 group
-        ${size === "lg" ? "h-14 px-10 text-base rounded-[18px]" : "h-11 px-7 text-sm rounded-[14px]"}
-        ${isPrimary
-          ? "bg-gradient-to-r from-[#8B5CF6] to-[#D946EF] !text-white hover:opacity-90 shadow-[0_8px_25px_-5px_rgba(139,92,246,0.3)] hover:shadow-[0_15px_35px_-10px_rgba(139,92,246,0.4)] border-none"
-          : "bg-white !text-black border border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-sm"}
-        ${className}
-      `}>
-        <Link href={href || "#"}>
-          {/* Shine Effect */}
-          {isPrimary && (
-            <div className="absolute inset-0 w-1/2 h-full bg-white/20 skew-x-[-25deg] -translate-x-full group-hover:animate-shine transition-none pointer-events-none" />
-          )}
-          <span className="relative z-10 flex items-center gap-2">
-            {children}
-            {isPrimary && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform !text-white" />}
-          </span>
-        </Link>
-      </Button>
-    </motion.div>
+    <Button asChild className={`
+      relative overflow-hidden font-bold tracking-tight transition-all duration-300 group
+      hover:-translate-y-0.5 active:scale-95
+      ${size === "lg" ? "h-14 px-10 text-base rounded-[18px]" : "h-11 px-7 text-sm rounded-[14px]"}
+      ${isPrimary
+        ? "bg-gradient-to-r from-[#8B5CF6] to-[#D946EF] !text-white hover:opacity-90 shadow-[0_8px_25px_-5px_rgba(139,92,246,0.3)] hover:shadow-[0_15px_35px_-10px_rgba(139,92,246,0.4)] border-none"
+        : "bg-white !text-black border border-slate-200 hover:border-slate-300 hover:bg-slate-50 shadow-sm"}
+      ${className}
+    `}>
+      <Link href={href || "#"}>
+        {/* Shine Effect */}
+        {isPrimary && (
+          <div className="absolute inset-0 w-1/2 h-full bg-white/20 skew-x-[-25deg] -translate-x-full group-hover:animate-shine transition-none pointer-events-none" />
+        )}
+        <span className="relative z-10 flex items-center gap-2">
+          {children}
+          {isPrimary && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform !text-white" />}
+        </span>
+      </Link>
+    </Button>
   )
 }
 
@@ -123,7 +119,7 @@ const Nav = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 w-full bg-white border-b border-slate-200/50 shadow-xl py-4 px-6 flex flex-col gap-4 lg:hidden -z-10"
+            className="absolute top-full left-0 w-full bg-white border-b border-slate-200/50 shadow-xl py-4 px-6 flex flex-col gap-4 lg:hidden z-40"
           >
             {['Features', 'Intelligence', 'Security', 'Pricing', 'Blog'].map((item) => (
               <Link
@@ -227,7 +223,7 @@ export default function LandingPage() {
 
       <main className="relative min-h-screen">
         {/* Dynamic Background Decor */}
-        <div className="absolute top-0 left-0 w-full h-[100vh] pointer-events-none -z-10 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.05),transparent_60%),radial-gradient(circle_at_bottom_left,rgba(255,59,48,0.03),transparent_60%)]" />
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none -z-10 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.05),transparent_60%),radial-gradient(circle_at_bottom_left,rgba(255,59,48,0.03),transparent_60%)]" />
 
         {/* Hero Section */}
         <section aria-label="Introduction" className="relative pt-24 lg:pt-32 pb-12 px-6 max-w-7xl mx-auto overflow-hidden">
