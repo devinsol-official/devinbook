@@ -8,8 +8,9 @@ const {
 const generateToken = require("../utils/generateToken");
 
 const rpName = "DevinBook";
-const rpID = process.env.RP_ID || "localhost";
-const origin = process.env.NEXT_PUBLIC_APP_URL || `http://${rpID}:3000`;
+const isProd = process.env.NODE_ENV === "production";
+const rpID = process.env.RP_ID || (isProd ? "devinbook.devinsol.com" : "localhost");
+const origin = process.env.NEXT_PUBLIC_APP_URL || (isProd ? `https://${rpID}` : `http://${rpID}:3000`);
 
 /**
  * Helper to encode/decode arrays
