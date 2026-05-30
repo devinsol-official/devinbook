@@ -59,6 +59,9 @@ app.use("/api/accounts", accountRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/webauthn", webauthnRoutes);
 
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
+app.use("/api/subscription", subscriptionRoutes);
+
 // ─── Midnight Cron: expire subscriptions every night at 00:00 ───────────────
 // Runs at 00:00 every night server time
 cron.schedule("0 0 * * *", async () => {

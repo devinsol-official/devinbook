@@ -274,6 +274,26 @@ class ApiClient {
     })
   }
 
+  async adminListUsers(adminSecret: string) {
+    return this.request("/admin/users/list", {
+      headers: { "x-admin-secret": adminSecret },
+    })
+  }
+
+  async adminGetUserDetails(userId: string, adminSecret: string) {
+    return this.request(`/admin/users/${userId}`, {
+      headers: { "x-admin-secret": adminSecret },
+    })
+  }
+
+  // Subscription (User)
+  async applyCoupon(couponCode: string) {
+    return this.request("/subscription/apply-coupon", {
+      method: "POST",
+      body: JSON.stringify({ couponCode }),
+    })
+  }
+
   // WebAuthn / Passkeys
   async getWebAuthnRegistrationOptions() {
     return this.request("/webauthn/generate-registration-options")

@@ -50,7 +50,7 @@ export function UpgradeModal() {
 
       {/* Sheet */}
       <div
-        className="relative w-full max-w-[500px] mx-auto rounded-t-[40px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+        className="relative w-full max-w-[500px] max-h-[90vh] flex flex-col mx-auto rounded-t-[40px] sm:rounded-[40px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "linear-gradient(160deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)"
@@ -61,17 +61,17 @@ export function UpgradeModal() {
         <div className="absolute bottom-0 right-0 w-48 h-48 bg-purple-500/10 blur-3xl pointer-events-none" />
 
         {/* Handle */}
-        <div className="mx-auto w-12 h-1.5 bg-white/10 rounded-full mt-4" />
+        <div className="mx-auto w-12 h-1.5 bg-white/10 rounded-full mt-4 flex-shrink-0 relative z-10" />
 
         {/* Close button */}
         <button
           onClick={hideUpgradeModal}
-          className="absolute top-5 right-6 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+          className="absolute top-5 right-6 z-20 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
         >
           <X className="h-4 w-4 text-white/60" />
         </button>
 
-        <div className="px-6 pt-4 pb-10 space-y-6">
+        <div className="px-6 pt-4 pb-10 space-y-6 overflow-y-auto flex-1 z-10 relative">
           {/* Header */}
           <div className="text-center space-y-3 pt-2">
             <div className="relative inline-flex">

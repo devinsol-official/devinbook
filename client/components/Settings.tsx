@@ -44,6 +44,9 @@ export function Settings() {
   const { toast } = useToast()
   const router = useRouter()
 
+  const [couponCode, setCouponCode] = useState("")
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
+
   const formatDate = (d: Date | null) =>
     d ? d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—"
 
@@ -66,6 +69,21 @@ export function Settings() {
       }
     } catch (err) {
       console.error("Failed to save theme to DB", err)
+    }
+  }
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsApplyingCoupon(true);
+    try {
+      const res = await api.applyCoupon(couponCode.trim());
+      updateUser(res.user);
+      toast({ title: "Success", description: res.message });
+      setCouponCode("");
+    } catch (error: any) {
+      toast({ title: "Failed", description: error.message || "Failed to apply coupon", variant: "destructive" });
+    } finally {
+      setIsApplyingCoupon(false);
     }
   }
 
@@ -216,6 +234,29 @@ export function Settings() {
                     width: `${Math.min(100, Math.round((daysRemaining / 30) * 100))}%`
                   }}
                 />
+              </div>
+            </div>
+          )}
+
+          {!isPro && (
+            <div className="mt-4 pt-4 border-t flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+              <label className="text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground">Have a Coupon?</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter code"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  className="flex-1 bg-background border rounded-xl px-3 py-2 text-sm uppercase outline-none focus:border-indigo-500 transition-colors"
+                />
+                <Button 
+                  disabled={isApplyingCoupon || !couponCode.trim()} 
+                  onClick={handleApplyCoupon}
+                  size="sm" 
+                  className="rounded-xl font-bold bg-indigo-500 hover:bg-indigo-600 text-white"
+                >
+                  {isApplyingCoupon ? "Applying..." : "Apply"}
+                </Button>
               </div>
             </div>
           )}
