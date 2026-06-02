@@ -140,7 +140,7 @@ export const BLOG_POSTS: BlogPost[] = [
         description: "DevinBook now supports Fingerprint and Face ID. Discover how biometric authentication enhances your financial security, simplifies access, and provides a frictionless expense tracking experience.",
         date: "February 15, 2026",
         author: "Team Devinsol",
-        image: "/blogs/security-privacy.png",
+        image: "/blogs/biometric-security.png",
         category: "Product Update",
         readTime: "5 min read",
         keywords: ["Face ID", "Fingerprint login", "biometric authentication", "financial security", "secure expense tracker", "app security"],
