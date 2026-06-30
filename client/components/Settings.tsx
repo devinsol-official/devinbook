@@ -19,7 +19,13 @@ import {
   CircleHelp,
   Info,
   Crown,
-  Zap
+  Zap,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  Plus,
+  Lock
 } from "lucide-react"
 import {
   AlertDialog,
@@ -32,6 +38,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
@@ -46,6 +59,40 @@ export function Settings() {
 
   const [couponCode, setCouponCode] = useState("")
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
+
+  const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false)
+  const [shortcutApiKey, setShortcutApiKey] = useState("")
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false)
+  const [shortcutStep, setShortcutStep] = useState(1)
+  const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [apiUrl, setApiUrl] = useState("")
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const base = process.env.NEXT_PUBLIC_API_URL || `${window.location.origin}/api`;
+      setApiUrl(`${base}/external/transaction`);
+    }
+  }, [])
+
+  const handleCopy = async (text: string, fieldId: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setCopiedField(fieldId);
+      toast({ title: "Copied!", description: "Value copied to clipboard" });
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      toast({ title: "Failed to copy", description: "Please copy it manually", variant: "destructive" });
+    }
+  }
 
   const formatDate = (d: Date | null) =>
     d ? d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—"
@@ -348,24 +395,30 @@ export function Settings() {
                 onClick={async () => {
                   try {
                     const res = await api.generateApiKey();
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                      await navigator.clipboard.writeText(res.apiKey);
-                      toast({ title: "API Key Copied!", description: "Opening Shortcuts app..." });
-                    } else {
-                      prompt("Your API Key (Copy this before proceeding):", res.apiKey);
+                    setShortcutApiKey(res.apiKey);
+                    
+                    const icloudUrl = process.env.NEXT_PUBLIC_SHORTCUT_ICLOUD_URL;
+                    if (icloudUrl) {
+                      if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(res.apiKey);
+                      }
+                      toast({ title: "API Key Copied!", description: "Opening pre-configured Shortcut..." });
+                      window.location.href = icloudUrl;
+                      return;
                     }
-                    // Provide a generic iCloud shortcut link here
-                    window.location.href = "https://www.icloud.com/shortcuts/";
                   } catch (err: any) {
-                    toast({ title: "Failed", description: err.message || "Failed to generate key", variant: "destructive" });
+                    toast({ title: "Failed to generate key", description: err.message || "Could not generate API key", variant: "destructive" });
+                    return;
                   }
+                  setShortcutStep(1);
+                  setIsShortcutModalOpen(true);
                 }}
                 className="w-full rounded-[16px] h-12 font-bold bg-blue-600 hover:bg-blue-700 text-white border-none"
               >
                 Add to iOS Shortcuts
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Clicking this will generate your API key, copy it to your clipboard, and open the Shortcuts app where you can paste it.
+                Configure a custom iOS Shortcut to log transactions instantly using our API key.
               </p>
             </div>
           ) : (
@@ -383,6 +436,324 @@ export function Settings() {
           )}
         </div>
       </div>
+
+      {/* Apple Shortcuts Guided Setup Modal */}
+      <Dialog open={isShortcutModalOpen} onOpenChange={setIsShortcutModalOpen}>
+        <DialogContent className="rounded-[32px] sm:max-w-lg border bg-card/95 backdrop-blur-xl max-h-[90vh] flex flex-col p-6 overflow-hidden">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="font-black text-xl flex items-center gap-2">
+              <Zap className="h-5 w-5 text-blue-500" />
+              iOS Shortcut Setup
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Configure your iOS device to log transactions with a single tap.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Stepper */}
+          <div className="flex items-center justify-between px-2 py-4 border-b border-muted">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (shortcutApiKey || step === 1) {
+                      setShortcutStep(step);
+                    }
+                  }}
+                  disabled={step > 1 && !shortcutApiKey}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs transition-all ${
+                    shortcutStep === step
+                      ? "bg-blue-600 text-white ring-4 ring-blue-500/25 scale-105"
+                      : shortcutStep > step
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      : "bg-muted text-muted-foreground cursor-not-allowed"
+                  }`}
+                >
+                  {shortcutStep > step ? <Check className="h-3.5 w-3.5" /> : step}
+                </button>
+                {step < 3 && (
+                  <div
+                    className={`h-[2px] w-12 sm:w-20 mx-2 rounded-full transition-all ${
+                      shortcutStep > step ? "bg-emerald-500/50" : "bg-muted"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto py-4 space-y-4">
+            {/* Step 1: API Key */}
+            {shortcutStep === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-foreground">Step 1: Your API Key</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    This key authenticates your iOS device securely. Keep it secret.
+                  </p>
+                </div>
+
+                <div className="bg-muted/30 border rounded-2xl p-4 space-y-3 relative overflow-hidden">
+                  {shortcutApiKey ? (
+                    <div className="space-y-3">
+                      <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">API Key</label>
+                      <div className="flex items-center gap-2 bg-background border rounded-xl px-3 py-2.5 relative">
+                        <span className="font-mono text-xs overflow-x-auto select-all pr-20 whitespace-nowrap block scrollbar-none w-full text-foreground">
+                          {isApiKeyVisible ? shortcutApiKey : "••••••••••••••••••••••••••••••••"}
+                        </span>
+                        <div className="absolute right-2 top-1.5 flex items-center gap-1 bg-background pl-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-muted"
+                            onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
+                          >
+                            {isApiKeyVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-muted"
+                            onClick={() => handleCopy(shortcutApiKey, 'key')}
+                          >
+                            {copiedField === 'key' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-[11px] rounded-lg h-7 font-bold px-2.5"
+                          onClick={async () => {
+                            try {
+                              const res = await api.generateApiKey();
+                              setShortcutApiKey(res.apiKey);
+                              toast({ title: "New Key Generated", description: "API Key has been regenerated and copied." });
+                            } catch (err: any) {
+                              toast({ title: "Failed to generate key", description: err.message, variant: "destructive" });
+                            }
+                          }}
+                        >
+                          Regenerate Key
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-4 space-y-3 text-center">
+                      <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                        <Lock className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-foreground">No API key active</p>
+                        <p className="text-[10px] text-muted-foreground max-w-[240px]">
+                          Generate an API key to enable verification for the iOS Shortcuts.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={async () => {
+                          try {
+                            const res = await api.generateApiKey();
+                            setShortcutApiKey(res.apiKey);
+                            toast({ title: "API Key Generated!", description: "API Key copied to clipboard." });
+                          } catch (err: any) {
+                            toast({ title: "Failed", description: err.message || "Failed to generate key", variant: "destructive" });
+                          }
+                        }}
+                      >
+                        Generate API Key
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="font-bold text-blue-400 block mb-1">💡 Developer Note</span>
+                  You can bypass this manual setup for all users by setting the <code className="font-mono bg-background border px-1 rounded text-foreground">NEXT_PUBLIC_SHORTCUT_ICLOUD_URL</code> environment variable in <code className="font-mono bg-background border px-1 rounded text-foreground">.env.local</code> with a pre-configured iCloud Shortcut link.
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Shortcuts app configuration instructions */}
+            {shortcutStep === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-foreground">Step 2: Collect User Inputs</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Open the built-in Apple **Shortcuts** app on iOS, tap <span className="font-bold text-blue-500"><Plus className="h-3 w-3 inline mx-0.5" /></span> to create a new shortcut, and add these input actions:
+                  </p>
+                </div>
+
+                <div className="bg-muted/30 border rounded-2xl p-4 space-y-3 max-h-[220px] overflow-y-auto">
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Add "Ask for Input" (Amount)</p>
+                      <p className="text-[11px] text-muted-foreground">Prompt: <span className="font-mono bg-background border px-1 rounded text-foreground">Amount</span>, Input Type: <span className="font-semibold text-foreground">Number</span></p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Add "Choose from Menu" (Type)</p>
+                      <p className="text-[11px] text-muted-foreground">Prompt: <span className="font-mono bg-background border px-1 rounded text-foreground">Type</span>. Add options: <span className="font-semibold text-rose-500">expense</span> and <span className="font-semibold text-emerald-500">income</span></p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Add "Ask for Input" (Category)</p>
+                      <p className="text-[11px] text-muted-foreground">Prompt: <span className="font-mono bg-background border px-1 rounded text-foreground">Category</span>, Type: <span className="font-semibold text-foreground">Text</span></p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">4</div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Add "Ask for Input" (Account)</p>
+                      <p className="text-[11px] text-muted-foreground">Prompt: <span className="font-mono bg-background border px-1 rounded text-foreground">Account</span>, Type: <span className="font-semibold text-foreground">Text</span></p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">5</div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Add "Ask for Input" (Description)</p>
+                      <p className="text-[11px] text-muted-foreground">Prompt: <span className="font-mono bg-background border px-1 rounded text-foreground">Description</span>, Type: <span className="font-semibold text-foreground">Text</span> (Optional)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: API Request parameters */}
+            {shortcutStep === 3 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-foreground">Step 3: Call DevinBook API</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Add the **"Get Contents of URL"** action in Shortcuts and configure it with these settings:
+                  </p>
+                </div>
+
+                <div className="bg-muted/30 border rounded-2xl p-4 space-y-4 max-h-[260px] overflow-y-auto">
+                  {/* URL Endpoint */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">URL Endpoint</label>
+                      <span className="text-[9px] font-black text-blue-500 uppercase bg-blue-500/10 px-1.5 py-0.5 rounded">POST</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-background border rounded-xl px-3 py-2 relative">
+                      <span className="font-mono text-[10px] overflow-x-auto select-all pr-12 whitespace-nowrap block scrollbar-none w-full text-foreground">
+                        {apiUrl}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 absolute right-1.5 hover:bg-muted shrink-0"
+                        onClick={() => handleCopy(apiUrl, 'url')}
+                      >
+                        {copiedField === 'url' ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Headers */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Headers</label>
+                    <div className="bg-background border rounded-xl p-3 space-y-2.5 font-mono text-[10px]">
+                      <div className="flex items-center justify-between border-b border-muted pb-2">
+                        <span className="text-foreground font-semibold">x-api-key</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground max-w-[120px] truncate">{shortcutApiKey || "YOUR_API_KEY"}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 hover:bg-muted shrink-0"
+                            onClick={() => handleCopy(shortcutApiKey, 'hdr_key')}
+                          >
+                            {copiedField === 'hdr_key' ? <Check className="h-2.5 w-2.5 text-emerald-500" /> : <Copy className="h-2.5 w-2.5" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground font-semibold">Content-Type</span>
+                        <span className="text-muted-foreground">application/json</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Request Body JSON */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">JSON Body</label>
+                      <span className="text-[9px] text-muted-foreground italic">Insert gathered inputs as values</span>
+                    </div>
+                    <div className="relative">
+                      <pre className="bg-background border rounded-xl p-3 font-mono text-[9px] text-foreground leading-relaxed overflow-x-auto text-left">
+{`{
+  "amount": Amount,
+  "type": Chosen Item (Type),
+  "category_name": Category,
+  "account_name": Account,
+  "description": Description
+}`}
+                      </pre>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 absolute right-2 top-2 hover:bg-muted shrink-0"
+                        onClick={() => handleCopy(`{\n  "amount": 0,\n  "type": "expense",\n  "category_name": "Food",\n  "account_name": "Main Wallet",\n  "description": "My transaction"\n}`, 'body')}
+                      >
+                        {copiedField === 'body' ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Dialog Footer Actions */}
+          <div className="flex items-center justify-between border-t border-muted pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              className="rounded-xl font-bold h-10 px-4 hover:bg-muted"
+              disabled={shortcutStep === 1}
+              onClick={() => setShortcutStep((prev) => prev - 1)}
+            >
+              Back
+            </Button>
+            {shortcutStep < 3 ? (
+              <Button
+                type="button"
+                className="rounded-xl font-bold h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!shortcutApiKey}
+                onClick={() => setShortcutStep((prev) => prev + 1)}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="rounded-xl font-bold h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => setIsShortcutModalOpen(false)}
+              >
+                Done
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Logout */}
       <AlertDialog>
