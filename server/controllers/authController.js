@@ -153,3 +153,18 @@ exports.updateMe = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.generateApiKey = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.apiKey = token;
+    await user.save();
+
+    res.json({ apiKey: user.apiKey });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

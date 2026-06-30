@@ -2,6 +2,21 @@
 
 All notable changes to the **DevinBook** project will be documented in this file.
 
+## [1.4.3] - 2026-06-30
+### Added
+- **Apple-Style Liquid Glass Navigation Bar**: Implemented a highly premium glossy navigation bar utilizing specular top-edge light highlights, diagonal shine gradients, and custom blur saturation styling (`.liquid-glass`).
+- **Full Glassmorphic Visual Theme**: Replaced flat page backgrounds with multi-tonal light/dark gradients accompanied by ambient colored background orbs (pink, purple, and green). All content sections, card displays, and charts have been wrapped in a semi-transparent frosted layout (`.glass`).
+- **Account-Specific PDF Statement Downloads**: Enabled users to instantly export detailed PDF financial statements calculated specifically for any individual account directly from the Transactions screen.
+- **Dynamic Action Button Opacity**: Added smooth framer-motion animations that hide sliding Edit/Delete buttons under transaction cards when closed and fade them in only on active drag, preventing any background leakages through glass elements.
+
+### Changed
+- **Revolut & Stripe Inspired PDF Designs**: Completely overhauled the report engine to output a professional, high-end financial layout featuring solid dark header bars, color-accented summary blocks, and clean bordered tables.
+
+### Fixed
+- **PDF Unicode Character Glitches**: Resolved issues where Unicode symbols (like up/down arrows) rendered as broken control characters by converting them to standard string signals.
+- **Shadcn Chart Type Diagnostics**: Patched implicit `any` assignments, payload mapping callbacks, and parameter constraints within the custom Recharts UI wrapper `chart.tsx` to fix TypeScript compilation.
+- **JSX Layout Nesting**: Rectified broken element parent wrappers and duplicate closing div trees in `Dashboard.tsx`.
+
 ## [1.3.3] - 2026-02-11
 ### Added
 - **"Financial Intelligence" Hub**: Launched a premium Blog system with high-quality, professional articles focusing on finance strategy, small business reporting, and security.

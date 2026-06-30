@@ -321,6 +321,69 @@ export function Settings() {
         </div>
       </div>
 
+      {/* Apple Shortcuts Integration (Pro Only) */}
+      <div className="space-y-4">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground px-2">Integrations</h3>
+        <div className="bg-card border rounded-[32px] overflow-hidden p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                <Zap className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="font-black text-sm">Apple Shortcuts</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Log transactions instantly</p>
+              </div>
+            </div>
+            {isPro && (
+              <span className="text-[10px] font-black uppercase bg-gradient-to-r from-amber-400 to-orange-400 text-black px-2.5 py-1 rounded-xl">
+                Pro Feature
+              </span>
+            )}
+          </div>
+          
+          {isPro ? (
+            <div className="space-y-3">
+              <Button 
+                onClick={async () => {
+                  try {
+                    const res = await api.generateApiKey();
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                      await navigator.clipboard.writeText(res.apiKey);
+                      toast({ title: "API Key Copied!", description: "Opening Shortcuts app..." });
+                    } else {
+                      prompt("Your API Key (Copy this before proceeding):", res.apiKey);
+                    }
+                    // Provide a generic iCloud shortcut link here
+                    window.location.href = "https://www.icloud.com/shortcuts/";
+                  } catch (err: any) {
+                    toast({ title: "Failed", description: err.message || "Failed to generate key", variant: "destructive" });
+                  }
+                }}
+                className="w-full rounded-[16px] h-12 font-bold bg-blue-600 hover:bg-blue-700 text-white border-none"
+              >
+                Add to iOS Shortcuts
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Clicking this will generate your API key, copy it to your clipboard, and open the Shortcuts app where you can paste it.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-500">
+                Integrate with Apple Shortcuts to log transactions with a single tap from your home screen.
+              </p>
+              <Button 
+                onClick={() => showUpgradeModal()}
+                className="w-full rounded-[16px] h-12 font-bold bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 text-white border-none"
+              >
+                Upgrade to Pro to Unlock
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Logout */}
       <AlertDialog>
         <AlertDialogTrigger asChild>

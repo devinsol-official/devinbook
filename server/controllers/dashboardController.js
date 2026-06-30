@@ -41,34 +41,35 @@ const getStats = async (req, res) => {
         const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        const daily = await getSumByDate(userId, startOfDay);
-        const weekly = await getSumByDate(userId, startOfWeek);
-        const monthly = await getSumByDate(userId, startOfMonth);
-
-        const monthWise = await Transaction.aggregate([
-            { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-            {
-                $group: {
-                    _id: { month: { $month: "$date" }, year: { $year: "$date" } },
-                    expenses: {
-                        $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] },
-                    },
-                    income: {
-                        $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] },
+        const [daily, weekly, monthly, monthWise] = await Promise.all([
+            getSumByDate(userId, startOfDay),
+            getSumByDate(userId, startOfWeek),
+            getSumByDate(userId, startOfMonth),
+            Transaction.aggregate([
+                { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+                {
+                    $group: {
+                        _id: { month: { $month: "$date" }, year: { $year: "$date" } },
+                        expenses: {
+                            $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] },
+                        },
+                        income: {
+                            $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] },
+                        },
                     },
                 },
-            },
-            {
-                $project: {
-                    _id: 0,
-                    month: "$_id.month",
-                    year: "$_id.year",
-                    expenses: 1,
-                    income: 1,
-                    balance: { $subtract: ["$income", "$expenses"] }
-                }
-            },
-            { $sort: { "year": 1, "month": 1 } },
+                {
+                    $project: {
+                        _id: 0,
+                        month: "$_id.month",
+                        year: "$_id.year",
+                        expenses: 1,
+                        income: 1,
+                        balance: { $subtract: ["$income", "$expenses"] }
+                    }
+                },
+                { $sort: { "year": 1, "month": 1 } },
+            ])
         ]);
 
         res.json({ daily, weekly, monthly, monthWise });

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import useSWR from "swr"
+import useSWRInfinite from "swr/infinite"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { api } from "@/lib/api"
 import { useAuth } from "@/contexts/AuthContext"
@@ -12,8 +14,10 @@ import {
     Search,
     Wallet,
     ChevronRight,
-    Tag
+    Tag,
+    Download
 } from "lucide-react"
+import { generateFinancialReport } from "@/lib/pdfReportGenerator"
 import { useToast } from "@/hooks/use-toast"
 import { AddTransaction } from "@/components/AddTransaction"
 import { EditTransactionModal } from "@/components/EditTransactionModal"
@@ -34,51 +38,45 @@ interface Transaction {
 export default function TransactionsPage() {
     const { user } = useAuth()
     const { toast } = useToast()
-    const [transactions, setTransactions] = useState<Transaction[]>([])
-    const [loading, setLoading] = useState(true)
     const [isAdding, setIsAdding] = useState(false)
     const [addType, setAddType] = useState<"income" | "expense">("expense")
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-    const [totalBalance, setTotalBalance] = useState(0)
-    const [accounts, setAccounts] = useState<any[]>([])
     const [selectedAccountId, setSelectedAccountId] = useState<string>("all")
 
-    useEffect(() => {
-        loadTransactions()
-    }, [])
-
-    const loadTransactions = async () => {
-        try {
-            setLoading(true)
-            const [data, accountsResponse] = await Promise.all([
-                api.getTransactions(selectedAccountId === "all" ? undefined : selectedAccountId),
-                api.getAccounts()
-            ])
-
-            setTransactions(data)
-            setAccounts(accountsResponse)
-
-            if (selectedAccountId === "all") {
-                setTotalBalance(accountsResponse.reduce((sum: number, acc: any) => sum + acc.balance, 0))
-            } else {
-                const selected = accountsResponse.find((a: any) => a.id === selectedAccountId)
-                setTotalBalance(selected ? selected.balance : 0)
-            }
-        } catch (error) {
-            toast({
-                title: "Error",
-                description: "Failed to load transactions",
-                variant: "destructive",
-            })
-        } finally {
-            setLoading(false)
-        }
+    const getKey = (pageIndex: number, previousPageData: any) => {
+        if (previousPageData && !previousPageData.data?.length) return null // reached the end
+        return `transactions?accountId=${selectedAccountId}&page=${pageIndex + 1}&limit=50`
     }
 
-    useEffect(() => {
-        loadTransactions()
-    }, [selectedAccountId])
+    const { data, error, size, setSize, mutate: mutateTransactions, isValidating } = useSWRInfinite(
+        getKey,
+        async (key) => {
+            const url = new URL(`http://localhost/${key}`)
+            const acc = url.searchParams.get("accountId")
+            const page = Number(url.searchParams.get("page"))
+            const limit = Number(url.searchParams.get("limit"))
+            return await api.getTransactions(acc === "all" || acc === null ? undefined : acc, page, limit)
+        }
+    )
+
+    const { data: accountsResponse } = useSWR('accounts', () => api.getAccounts())
+
+    const accounts = accountsResponse || []
+    const transactions = data ? data.flatMap(pageData => pageData.data) : []
+    
+    const loading = !data && !error
+    const isLoadingMore = loading || (size > 0 && data && typeof data[size - 1] === "undefined")
+    const isEmpty = data?.[0]?.data?.length === 0
+    const isReachingEnd = isEmpty || (data && data[data.length - 1]?.data?.length < 50)
+
+    let totalBalance = 0;
+    if (selectedAccountId === "all") {
+        totalBalance = accounts.reduce((sum: number, acc: any) => sum + acc.balance, 0)
+    } else {
+        const selected = accounts.find((a: any) => a.id === selectedAccountId)
+        totalBalance = selected ? selected.balance : 0
+    }
 
     const handleTransactionClick = (transaction: Transaction) => {
         const catId = transaction.categoryId?._id || transaction.categoryId?.id || transaction.categoryId
@@ -95,15 +93,29 @@ export default function TransactionsPage() {
     const handleDeleteTransaction = async (transaction: Transaction) => {
         if (!confirm("Are you sure you want to delete this transaction?")) return
         try {
-            setLoading(true)
             await api.deleteTransaction(transaction.id || (transaction as any)._id)
             toast({ title: "Success", description: "Deleted successfully" })
-            loadTransactions()
+            mutateTransactions()
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" })
-        } finally {
-            setLoading(false)
         }
+    }
+
+    const handleDownloadPDF = async () => {
+        const income = transactions.reduce((sum, t) => sum + (t.type === 'income' ? t.amount : 0), 0);
+        const expenses = transactions.reduce((sum, t) => sum + (t.type === 'expense' ? t.amount : 0), 0);
+        
+        let accountName = "ALL ACCOUNTS";
+        if (selectedAccountId !== "all") {
+            const selected = accounts.find((a: any) => a.id === selectedAccountId);
+            if (selected) accountName = selected.name.toUpperCase();
+        }
+
+        await generateFinancialReport(transactions, { income, expenses, balance: totalBalance }, accountName, accountName.replace(/\s+/g, '_'));
+        toast({
+            title: "Report Generated",
+            description: "Your high-class statement is ready.",
+        })
     }
 
     const groupTransactionsByDate = (txs: Transaction[]) => {
@@ -132,7 +144,7 @@ export default function TransactionsPage() {
                     onBack={() => setIsAdding(false)}
                     onSuccess={() => {
                         setIsAdding(false)
-                        loadTransactions()
+                        mutateTransactions()
                     }}
                     initialType={addType}
                 />
@@ -144,22 +156,25 @@ export default function TransactionsPage() {
 
     return (
         <ProtectedRoute>
-            <div className="flex flex-col min-h-screen bg-background pb-24">
+            <div className="flex flex-col min-h-screen pb-24 relative">
+                {/* Background orbs */}
+                <div className="fixed top-[-60px] left-[-60px] w-64 h-64 rounded-full opacity-20 dark:opacity-10 pointer-events-none" style={{background:'radial-gradient(circle, #818cf8, transparent 70%)', filter:'blur(60px)'}} />
+                <div className="fixed top-32 right-[-50px] w-56 h-56 rounded-full opacity-15 dark:opacity-10 pointer-events-none" style={{background:'radial-gradient(circle, #f472b6, transparent 70%)', filter:'blur(55px)'}} />
                 {/* Account Balance Header */}
-                <div className="p-6 pt-8 space-y-6">
+                <div className="relative z-10 p-6 pt-8 space-y-6">
                     <div className="flex items-center justify-between">
                         <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-6 px-6">
                             <button
                                 onClick={() => setSelectedAccountId("all")}
-                                className={`flex-shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedAccountId === "all" ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground"}`}
+                                className={`flex-shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedAccountId === "all" ? "bg-primary text-primary-foreground shadow-lg glow-indigo" : "glass-subtle text-muted-foreground hover:text-foreground"}`}
                             >
                                 All Accounts
                             </button>
-                            {accounts.map(acc => (
+                            {accounts.map((acc: any) => (
                                 <button
                                     key={acc.id}
                                     onClick={() => setSelectedAccountId(acc.id)}
-                                    className={`flex-shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedAccountId === acc.id ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground"}`}
+                                    className={`flex-shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedAccountId === acc.id ? "bg-primary text-primary-foreground shadow-lg glow-indigo" : "glass-subtle text-muted-foreground hover:text-foreground"}`}
                                 >
                                     {acc.name}
                                 </button>
@@ -191,10 +206,17 @@ export default function TransactionsPage() {
                             </div>
                             <span className="font-bold">Add Spent</span>
                         </Button>
+                        <Button
+                            onClick={handleDownloadPDF}
+                            className="w-14 h-14 rounded-2xl bg-slate-800 text-white hover:bg-slate-900 transition-all active:scale-95 flex items-center justify-center shadow-lg shadow-slate-900/20"
+                            title="Download PDF Report"
+                        >
+                            <Download className="h-5 w-5" />
+                        </Button>
                     </div>
                 </div>
 
-                <div className="flex-1 bg-slate-50/50 dark:bg-slate-950 rounded-t-[40px] shadow-2xl border-t p-6 pb-20 space-y-8 min-h-[500px]">
+                <div className="relative z-10 flex-1 glass rounded-t-[40px] shadow-2xl border-t border-white/30 dark:border-white/10 p-6 pb-20 space-y-8 min-h-[500px]">
                     {loading ? (
                         <div className="flex items-center justify-center py-20">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -258,6 +280,20 @@ export default function TransactionsPage() {
                             </div>
                         ))
                     )}
+                    
+                    {/* Load More Button */}
+                    {!isEmpty && !isReachingEnd && (
+                        <div className="flex justify-center pt-6 pb-2">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setSize(size + 1)} 
+                                disabled={isLoadingMore}
+                                className="rounded-2xl font-bold h-12 px-8"
+                            >
+                                {isLoadingMore ? "Loading..." : "Load More"}
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
             </div>
@@ -269,7 +305,7 @@ export default function TransactionsPage() {
                     setEditingTransaction(null)
                 }}
                 transaction={editingTransaction}
-                onSuccess={loadTransactions}
+                onSuccess={() => mutateTransactions()}
             />
         </ProtectedRoute>
     )

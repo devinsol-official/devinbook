@@ -8,7 +8,7 @@ export default function AppLayout({
 }) {
     return (
         // <DesktopGuard>
-        <main className="mx-auto min-h-screen max-w-[450px] bg-background shadow-2xl relative overflow-x-hidden border-x border-border/50 pb-20">
+        <main className="mx-auto min-h-screen max-w-[450px] relative overflow-x-hidden border-x border-white/20 dark:border-white/5 pb-20 shadow-2xl" style={{background: 'var(--bg-gradient)'}}>
             {children}
             <BottomNavigation />
         </main>

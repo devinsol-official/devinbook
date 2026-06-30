@@ -9,5 +9,6 @@ router.post("/forgot-password", require("../controllers/authController").forgotP
 router.post("/reset-password", require("../controllers/authController").resetPassword);
 router.get("/me", protect, getMe);
 router.put("/me", protect, updateMe);
+router.post("/generate-api-key", protect, require("../controllers/authController").generateApiKey);
 
 module.exports = router;

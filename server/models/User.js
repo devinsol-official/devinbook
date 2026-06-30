@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema({
   planExpiresAt: { type: Date, default: null },
   theme: { type: String, enum: ["light", "dark"], default: "light" },
   currentChallenge: { type: String },
+  whatsappNumber: { type: String, unique: true, sparse: true },
+  apiKey: { type: String, unique: true, sparse: true },
   authenticators: [{
     credentialID: { type: Buffer, required: true },
     credentialPublicKey: { type: Buffer, required: true },

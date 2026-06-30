@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSubscription } from "@/contexts/SubscriptionContext"
 import { api } from "@/lib/api"
@@ -21,6 +22,7 @@ import {
   Crown,
   Lock
 } from "lucide-react"
+import { generateFinancialReport } from "@/lib/pdfReportGenerator"
 import { CategoryPieChart } from "./CategoryPieChart"
 import { RecentTransactions } from "./RecentTransactions"
 import { InitialSetup } from "./InitialSetup"
@@ -61,19 +63,7 @@ export function Dashboard() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const { isPro, showUpgradeModal } = useSubscription()
-  const [stats, setStats] = useState<{
-    daily: Stats,
-    weekly: Stats,
-    monthly: Stats,
-    monthWise: ChartData[]
-  } | null>(null)
-
-  // ... existing state ...
   const [filter, setFilter] = useState("month")
-  const [allTransactions, setAllTransactions] = useState<any[]>([])
-  const [recentTransactions, setRecentTransactions] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [needsSetup, setNeedsSetup] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
   const [addType, setAddType] = useState<"income" | "expense">("expense")
   const [viewType, setViewType] = useState<"income" | "expense">("expense")
@@ -83,45 +73,31 @@ export function Dashboard() {
   const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
-  const [accounts, setAccounts] = useState<any[]>([])
+
+  const { data: categories } = useSWR('categories', () => api.getCategories())
+  const { data: statsResponse, mutate: mutateStats } = useSWR('dashboard-stats', () => api.getDashboardStats())
+  const { data: transactionsData, mutate: mutateTransactions } = useSWR('dashboard-transactions', () => api.getTransactions(undefined, 1, 50))
+  const { data: accountsResponse, mutate: mutateAccounts } = useSWR('accounts', () => api.getAccounts())
+
+  const loading = !categories || !statsResponse || !transactionsData || !accountsResponse
+  const needsSetup = categories?.length === 0
+
+  const allTransactions = transactionsData?.data || transactionsData || [] // Fallback for old cache
+  const accounts = accountsResponse || []
+  const stats = statsResponse
+  const recentTransactions = allTransactions.slice(0, 5)
 
   useEffect(() => {
-    loadDashboardData()
     if (searchParams.get("action") === "add") {
       setIsAdding(true)
     }
   }, [searchParams])
 
   const loadDashboardData = async () => {
-    try {
-      setLoading(true)
-      const categories = await api.getCategories()
-      if (categories.length === 0) {
-        setNeedsSetup(true)
-        setLoading(false)
-        return
-      }
-
-      const [statsResponse, transactions, accountsResponse] = await Promise.all([
-        api.getDashboardStats(),
-        api.getTransactions(),
-        api.getAccounts()
-      ])
-
-      setStats(statsResponse)
-      setAllTransactions(transactions)
-      setRecentTransactions(transactions.slice(0, 5))
-      setAccounts(accountsResponse)
-      setNeedsSetup(false)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load categories",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
+    // Revalidate data after mutations
+    mutateStats()
+    mutateTransactions()
+    mutateAccounts()
   }
 
   const getFilteredStats = () => {
@@ -133,8 +109,8 @@ export function Dashboard() {
       default:
         const monthsToLookBack = filter === "3months" ? 3 : filter === "6months" ? 6 : 12
         const periodData = stats.monthWise?.slice(-monthsToLookBack) || []
-        const income = periodData.reduce((sum, d) => sum + (d.income || 0), 0)
-        const expenses = periodData.reduce((sum, d) => sum + (d.expenses || 0), 0)
+        const income = periodData.reduce((sum: number, d: any) => sum + (d.income || 0), 0)
+        const expenses = periodData.reduce((sum: number, d: any) => sum + (d.expenses || 0), 0)
         return { income, expenses, balance: income - expenses }
     }
   }
@@ -154,132 +130,8 @@ export function Dashboard() {
     }
     const doc = new jsPDF()
     const currentStats = getFilteredStats()
-    const date = new Date().toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    })
-
-    // Helper: Add Logo
-    const addLogo = () => {
-      return new Promise<void>((resolve) => {
-        const img = new Image()
-        img.crossOrigin = "Anonymous"
-        img.src = "https://devinsol.com/wp-content/uploads/2025/08/Devinsol-e1754743293456.png"
-        img.onload = () => {
-          doc.addImage(img, 'PNG', 155, 12, 40, 14)
-          resolve()
-        }
-        img.onerror = () => resolve()
-      })
-    }
-
-    // 1. Header Section
-    doc.setFillColor(248, 250, 252) // slate-50
-    doc.rect(0, 0, 210, 40, 'F')
-
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(24)
-    doc.setTextColor(30, 41, 59) // slate-800
-    doc.text("FINANCIAL REPORT", 14, 25)
-
-    await addLogo()
-
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(9)
-    doc.setTextColor(100, 116, 139) // slate-400
-    doc.text(`ISSUED ON: ${date.toUpperCase()}`, 14, 34)
-    doc.text(`PERIOD: ${filter.toUpperCase()}`, 70, 34)
-
-    // 2. Performance Summary Widgets
-    // Income Widget
-    const [ir, ig, ib] = [240, 253, 244] // green-50
-    doc.setFillColor(ir, ig, ib)
-    doc.roundedRect(14, 50, 58, 30, 3, 3, 'F')
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(8)
-    const [itr, itg, itb] = [21, 128, 61] // green-700
-    doc.setTextColor(itr, itg, itb)
-    doc.text("TOTAL INCOME", 20, 58)
-    doc.setFontSize(14)
-    doc.text(`${currentStats.income.toLocaleString()} Rs`, 20, 70)
-
-    // Expense Widget
-    const [er, eg, eb] = [254, 242, 242] // red-50
-    doc.setFillColor(er, eg, eb)
-    doc.roundedRect(76, 50, 58, 30, 3, 3, 'F')
-    const [etr, etg, etb] = [185, 28, 28] // red-700
-    doc.setTextColor(etr, etg, etb)
-    doc.setFontSize(8)
-    doc.text("TOTAL SPENT", 82, 58)
-    doc.setFontSize(14)
-    doc.text(`${currentStats.expenses.toLocaleString()} Rs`, 82, 70)
-
-    // Balance Widget
-    const isPositive = currentStats.balance >= 0
-    const fillColor: [number, number, number] = isPositive ? [240, 249, 255] : [255, 247, 237]
-    doc.setFillColor(fillColor[0], fillColor[1], fillColor[2])
-    doc.roundedRect(138, 50, 58, 30, 3, 3, 'F')
-
-    const textColor: [number, number, number] = isPositive ? [3, 105, 161] : [194, 65, 12]
-    doc.setTextColor(textColor[0], textColor[1], textColor[2])
-    doc.setFontSize(8)
-    doc.text("NET BALANCE", 144, 58)
-    doc.setFontSize(14)
-    doc.text(`${currentStats.balance.toLocaleString()} Rs`, 144, 70)
-
-    // 3. Transactions Table
-    const tableData = allTransactions.map(t => [
-      new Date(t.date).toLocaleDateString('en-GB'),
-      t.description || (t.categoryId as any)?.name || "Untitled",
-      { content: t.type.toUpperCase(), styles: { textColor: t.type === 'income' ? [21, 128, 61] : [185, 28, 28] } },
-      { content: `${t.amount.toLocaleString()} Rs`, styles: { fontStyle: 'bold', halign: 'right' } }
-    ])
-
-    autoTable(doc, {
-      startY: 95,
-      head: [["DATE", "DESCRIPTION", "TYPE", "AMOUNT"]],
-      body: tableData,
-      theme: 'striped',
-      headStyles: {
-        fillColor: [30, 41, 59],
-        textColor: [255, 255, 255],
-        fontSize: 9,
-        fontStyle: 'bold',
-        cellPadding: 5
-      },
-      bodyStyles: {
-        fontSize: 9,
-        cellPadding: 4,
-        textColor: [51, 65, 85]
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252]
-      },
-      margin: { left: 14, right: 14 },
-    })
-
-    // 4. Footer
-    const pageCount = (doc as any).internal.getNumberOfPages()
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i)
-
-      // Divider
-      doc.setDrawColor(226, 232, 240)
-      doc.line(14, doc.internal.pageSize.height - 20, 196, doc.internal.pageSize.height - 20)
-
-      doc.setFontSize(8)
-      doc.setTextColor(148, 163, 184)
-      doc.setFont("helvetica", "normal")
-      doc.text("DESIGNED BY DEVINSOL", 14, doc.internal.pageSize.height - 12)
-      doc.text(`PAGE ${i} OF ${pageCount}`, doc.internal.pageSize.width - 35, doc.internal.pageSize.height - 12)
-
-      doc.setFont("helvetica", "italic")
-      doc.text("Automated Financial Insight Report", doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 12, { align: 'center' })
-    }
-
-    doc.save(`Financial_Statement_${date.replace(/\s/g, '_')}.pdf`)
-
+    const periodLabel = filter === "month" ? "THIS MONTH" : filter === "week" ? "THIS WEEK" : filter.toUpperCase()
+    await generateFinancialReport(allTransactions, currentStats, periodLabel)
     toast({
       title: "Report Generated",
       description: "Your high-class statement is ready.",
@@ -288,10 +140,10 @@ export function Dashboard() {
 
 
   const getCategoryStats = () => {
-    const transactions = allTransactions.filter(t => t.type === viewType)
+    const transactions = allTransactions.filter((t: any) => t.type === viewType)
     const groups: Record<string, { total: number; transactions: any[]; category: any }> = {}
 
-    transactions.forEach(t => {
+    transactions.forEach((t: any) => {
       const catId = (t.categoryId?._id || t.categoryId?.id || (typeof t.categoryId === 'string' ? t.categoryId : "unassigned")) as string
       if (!groups[catId]) {
         groups[catId] = {
@@ -336,14 +188,11 @@ export function Dashboard() {
   const handleDeleteTransaction = async (transaction: any) => {
     if (!confirm("Are you sure you want to delete this transaction?")) return
     try {
-      setLoading(true)
       await api.deleteTransaction(transaction.id || transaction._id)
       toast({ title: "Success", description: "Deleted successfully" })
       loadDashboardData()
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -367,8 +216,11 @@ export function Dashboard() {
   const categoryStats = getCategoryStats()
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-24">
-      <div className="p-6 space-y-8">
+    <div className="flex flex-col min-h-screen pb-24 relative">
+      {/* Background orbs */}
+      <div className="fixed top-[-80px] right-[-60px] w-72 h-72 rounded-full opacity-20 dark:opacity-10 pointer-events-none" style={{background:'radial-gradient(circle, #a78bfa, transparent 70%)', filter:'blur(50px)'}} />
+      <div className="fixed bottom-24 left-[-80px] w-64 h-64 rounded-full opacity-15 dark:opacity-10 pointer-events-none" style={{background:'radial-gradient(circle, #34d399, transparent 70%)', filter:'blur(50px)'}} />
+      <div className="relative z-10 p-6 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -409,7 +261,7 @@ export function Dashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-4">
-          <Card className="rounded-[40px] border-none bg-slate-900 text-white shadow-2xl overflow-hidden relative">
+          <Card className="rounded-[40px] border-none overflow-hidden relative glass-dark text-white shadow-2xl">
             <div className="absolute top-0 right-0 p-8 opacity-10">
               <DollarSign className="w-24 h-24" />
             </div>
@@ -417,14 +269,14 @@ export function Dashboard() {
               <div className="space-y-1">
                 <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Total Balance</p>
                 <h2 className="text-5xl font-black tracking-tighter">
-                  {(accounts.reduce((sum, acc) => sum + acc.balance, 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })} Rs
+                  {(accounts.reduce((sum: number, acc: any) => sum + acc.balance, 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })} Rs
                 </h2>
               </div>
 
               {/* Featured Accounts */}
-              {accounts.some(a => a.isFeatured) && (
+              {accounts.some((a: any) => a.isFeatured) && (
                 <div className="flex flex-wrap gap-4 py-2 border-y border-white/5">
-                  {accounts.filter(a => a.isFeatured).map(acc => (
+                  {accounts.filter((a: any) => a.isFeatured).map((acc: any) => (
                     <div key={acc.id} className="space-y-0.5">
                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{acc.name}</p>
                       <p className="font-black text-sm">{(acc.balance || 0).toLocaleString()} Rs</p>
@@ -499,11 +351,9 @@ export function Dashboard() {
             </div>
           </div>
 
-          <Card className="rounded-[32px] shadow-sm border-none bg-muted/30 p-4">
-            <CardContent className="p-0">
-              <CategoryPieChart data={categoryStats} />
-            </CardContent>
-          </Card>
+          <div className="glass rounded-[32px] p-4">
+            <CategoryPieChart data={categoryStats} />
+          </div>
         </div>
 
         {/* Group Breakdown */}
@@ -563,7 +413,7 @@ export function Dashboard() {
               </div>
             ) : (
               categoryStats.map((cat) => (
-                <div key={cat.id} className="bg-white dark:bg-slate-950 rounded-[28px] border shadow-sm overflow-hidden transition-all">
+                <div key={cat.id} className="glass rounded-[28px] overflow-hidden transition-all">
                   <div
                     onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}
                     className="p-5 flex items-center justify-between cursor-pointer group"
@@ -649,7 +499,7 @@ export function Dashboard() {
             </Button>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] shadow-sm border p-2">
+          <div className="glass rounded-[32px] p-2">
             <RecentTransactions
               transactions={recentTransactions}
               onTransactionClick={handleTransactionClick}

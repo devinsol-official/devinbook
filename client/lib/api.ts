@@ -59,6 +59,12 @@ class ApiClient {
   }
 
   // Auth endpoints
+  async generateApiKey() {
+    return this.request("/auth/generate-api-key", {
+      method: "POST",
+    })
+  }
+
   async getMe() {
     return this.request("/auth/me")
   }
@@ -149,8 +155,12 @@ class ApiClient {
   }
 
   // Transactions
-  async getTransactions(accountId?: string) {
-    const query = accountId ? `?accountId=${accountId}` : ""
+  async getTransactions(accountId?: string, page?: number, limit?: number) {
+    const params = new URLSearchParams()
+    if (accountId && accountId !== "all") params.append("accountId", accountId)
+    if (page) params.append("page", page.toString())
+    if (limit) params.append("limit", limit.toString())
+    const query = params.toString() ? `?${params.toString()}` : ""
     return this.request(`/transactions${query}`)
   }
 

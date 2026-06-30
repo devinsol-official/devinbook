@@ -309,7 +309,7 @@ function AccountItem({ account }: { account: Account }) {
     const colorClass = ACCOUNT_TYPE_COLORS[account.type] || ACCOUNT_TYPE_COLORS.other
 
     return (
-        <div className="p-5 flex items-center justify-between group transition-colors">
+        <div className="glass rounded-[28px] p-5 flex items-center justify-between group transition-all hover:shadow-lg">
             <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform ${colorClass}`}>
                     <Icon className="h-6 w-6" />

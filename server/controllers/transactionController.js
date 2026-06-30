@@ -41,14 +41,27 @@ exports.createTransaction = async (req, res) => {
 
 exports.getTransactions = async (req, res) => {
   try {
-    const { accountId } = req.query;
+    const { accountId, page, limit } = req.query;
     const query = { userId: req.user._id };
     if (accountId) query.accountId = accountId;
 
-    const transactions = await Transaction.find(query)
-      .populate("categoryId")
-      .populate("itemId")
-      .populate("accountId");
+    let transactionQuery = Transaction.find(query).sort({ date: -1 });
+    
+    // Support pagination if provided
+    let total = 0;
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const skip = (pageNum - 1) * limitNum;
+      
+      [total, transactions] = await Promise.all([
+        Transaction.countDocuments(query),
+        transactionQuery.skip(skip).limit(limitNum).populate("categoryId").populate("itemId").populate("accountId")
+      ]);
+    } else {
+      transactions = await transactionQuery.populate("categoryId").populate("itemId").populate("accountId");
+      total = transactions.length;
+    }
 
     const formattedTransactions = transactions.map(t => {
       const trans = t.toObject();
@@ -67,7 +80,16 @@ exports.getTransactions = async (req, res) => {
       return trans;
     });
 
-    res.json(formattedTransactions);
+    if (page && limit) {
+      res.json({
+        data: formattedTransactions,
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit))
+      });
+    } else {
+      res.json(formattedTransactions);
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

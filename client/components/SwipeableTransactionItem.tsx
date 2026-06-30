@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { motion, useAnimation, PanInfo, useMotionValue } from "framer-motion"
+import { motion, useAnimation, PanInfo, useMotionValue, useTransform } from "framer-motion"
 import { Edit2, Trash2 } from "lucide-react"
 
 interface SwipeableTransactionItemProps {
@@ -21,6 +21,7 @@ export function SwipeableTransactionItem({
 }: SwipeableTransactionItemProps) {
     const controls = useAnimation()
     const x = useMotionValue(0)
+    const buttonOpacity = useTransform(x, [0, -30], [0, 1])
     const [isSwipedOpen, setIsSwipedOpen] = useState(false)
     const [isDragging, setIsDragging] = useState(false)
 
@@ -74,11 +75,11 @@ export function SwipeableTransactionItem({
 
     return (
         <div
-            className="relative overflow-hidden rounded-[24px] bg-slate-200/50 dark:bg-slate-800/80 w-full mb-3"
+            className="relative overflow-hidden rounded-[24px] w-full mb-3"
             style={{ touchAction: 'pan-y' }}
         >
             {/* Action Buttons Container - FIXED size and position */}
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-3 h-full z-0">
+            <motion.div style={{ opacity: buttonOpacity }} className="absolute inset-y-0 right-0 flex items-center pr-3 gap-3 h-full z-0">
                 <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
@@ -109,7 +110,7 @@ export function SwipeableTransactionItem({
                         <span className="text-[10px] font-black uppercase">Delete</span>
                     </button>
                 )}
-            </div>
+            </motion.div>
 
             {/* The visible card */}
             <motion.div
@@ -122,8 +123,7 @@ export function SwipeableTransactionItem({
                 onDragEnd={onDragEnd}
                 animate={controls}
                 onTap={handleTap}
-                className="relative bg-white dark:bg-slate-900 border dark:border-slate-800 shadow-md z-10 cursor-pointer rounded-[24px]"
-            >
+                className="relative glass border border-white/30 dark:border-white/10 shadow-md z-10 cursor-pointer rounded-[24px]"            >
                 {children}
             </motion.div>
         </div>

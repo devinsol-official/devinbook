@@ -29,20 +29,13 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-    origin: ["http://localhost:3000", "http://192.168.1.21:3000", "http://192.168.1.13:3000", "http://192.168.1.13:8081", 'https://devinbook.devinsol.com'],
+    origin: ["http://localhost:3000", "http://192.168.1.21:3000", "http://192.168.1.13:3000", "http://192.168.1.13:8081", 'https://devinbook.devinsol.com', 'http://192.168.1.6:3000', 'http://192.168.137.1:3000'],
     credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Connection middleware to ensure DB is ready before any request
-app.use(async (req, res, next) => {
-    try {
-        await connectDB();
-        next();
-    } catch (error) {
-        res.status(500).json({ message: "Database connection failed" });
-    }
-});
+// Connection established at startup below
 
 // Health check
 app.get("/api/health-check", (req, res) => {
@@ -58,6 +51,12 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/webauthn", webauthnRoutes);
+
+const whatsappRoutes = require("./routes/whatsappRoutes");
+app.use("/api/whatsapp", whatsappRoutes);
+
+const externalRoutes = require("./routes/externalRoutes");
+app.use("/api/external", externalRoutes);
 
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 app.use("/api/subscription", subscriptionRoutes);
@@ -76,4 +75,8 @@ console.log("⏰ Subscription expiry cron scheduled (midnight PKT)");
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+connectDB().then(() => {
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+}).catch(err => {
+    console.error("❌ Failed to connect to DB on startup", err);
+});

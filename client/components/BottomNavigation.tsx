@@ -20,7 +20,7 @@ export function BottomNavigation() {
   if (!user || pathname === "/") return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 max-w-[450px] mx-auto bg-card/95 backdrop-blur-sm border-t px-4 py-2 safe-area-pb z-50">
+    <div className="fixed bottom-6 left-4 right-4 max-w-[calc(450px-32px)] mx-auto liquid-glass border border-white/30 dark:border-white/10 px-2 py-2.5 rounded-[24px] shadow-2xl z-50 transition-all">
       <div className="flex items-center justify-around max-w-md mx-auto">
         {tabs.map((tab) => {
           const isActive = pathname.startsWith(tab.href)
