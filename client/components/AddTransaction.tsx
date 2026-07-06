@@ -4,12 +4,15 @@ import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Plus, Check, Search, X, Wallet } from "lucide-react"
+import { ArrowLeft, Plus, Check, Search, X, Wallet, Tag, Calendar as CalendarIcon, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { AddCategoryModal } from "./AddCategoryModal"
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
-import * as Icons from "lucide-react"
+import { categoryIcons } from "@/lib/categoryIcons"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
 
 interface Category {
   id: string
@@ -55,6 +58,14 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
   const [searchQuery, setSearchQuery] = useState("")
   const [isAmountPopupOpen, setIsAmountPopupOpen] = useState(false)
   const [pendingCategory, setPendingCategory] = useState<Category | null>(null)
+  const [date, setDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })
+  const [time, setTime] = useState(() => {
+    const d = new Date()
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+  })
 
   useEffect(() => {
     loadData()
@@ -133,7 +144,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
         categoryId: selectedCategoryId,
         accountId: selectedAccountId || undefined,
         description: description.trim() || undefined,
-        date: new Date().toISOString().split("T")[0],
+        date: new Date(`${date}T${time}:00`).toISOString(),
       })
 
       toast({
@@ -158,11 +169,22 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
     setSelectedCategoryId(cat.id)
     setIsAmountPopupOpen(true)
     setAmount("") // Reset amount on new selection
+    const d = new Date()
+    setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
+    setTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`)
+  }
+
+  const handleDateSelect = (d: Date | undefined) => {
+    if (!d) return
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, "0")
+    const dd = String(d.getDate()).padStart(2, "0")
+    setDate(`${yyyy}-${mm}-${dd}`)
   }
 
   const renderIcon = (iconName?: string) => {
-    if (!iconName) return <Icons.Tag className="h-6 w-6" />
-    const IconComponent = (Icons as any)[iconName] || Icons.Tag
+    if (!iconName) return <Tag className="h-6 w-6" />
+    const IconComponent = categoryIcons[iconName] || Tag
     return <IconComponent className="h-6 w-6" />
   }
 
@@ -305,6 +327,49 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
                   onChange={(e) => setDescription(e.target.value)}
                   className="h-14 rounded-2xl bg-muted/50 border-none px-6 font-bold placeholder:font-medium text-center focus-visible:ring-primary/20"
                 />
+              </div>
+
+              {/* Date & Time Selectors */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 flex flex-col items-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Date</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          "w-full h-14 rounded-2xl bg-muted/50 border-none font-bold text-sm text-foreground flex items-center justify-center gap-2 hover:bg-muted/80"
+                        )}
+                      >
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>{format(new Date(`${date}T12:00:00`), "PP")}</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl bg-white dark:bg-slate-900" align="center">
+                      <Calendar
+                        mode="single"
+                        selected={new Date(`${date}T12:00:00`)}
+                        onSelect={handleDateSelect}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2 flex flex-col items-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Time</p>
+                  <div className="relative w-full flex items-center">
+                    <Clock className="absolute left-4 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="h-14 w-full rounded-2xl bg-muted/50 border-none pl-11 pr-4 font-bold text-center focus-visible:ring-primary/20"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="pt-2">

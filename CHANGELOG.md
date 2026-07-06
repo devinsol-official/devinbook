@@ -2,6 +2,16 @@
 
 All notable changes to the **DevinBook** project will be documented in this file.
 
+## [1.5.0] - 2026-07-07
+### Added
+- **Regular Billing Accounts**: Spawned a new account category specifically targeted at periodic subscriptions or household deliveries (e.g. Milk Guy, Yogurt).
+- **Daily Deliveries Log Ledger**: Implemented daily ledger systems to log recurring subscription deliveries offsetting account balances in real-time.
+- **Auto Mode Midnight Logging Cron**: Programmed an automated background cron running daily at 00:05 PKT server time that logs default items for any account with Auto Mode enabled.
+- **Table-Based PDF Statement Reports**: Created high-fidelity daily statement PDF generators exporting monthly delivery counts, log status, costs, and recorded payments.
+- **Space-Saving Account Type Accordion Selector**: Replaced large multi-column button grids under Account Type with a unified collapsible accordion selector in add/edit account modals.
+- **Modern Calendar Popover & Clock inputs**: Added custom Popovers embedding interactive calendars with clock-iconed input elements to replace default browser date picker widgets on transaction creations.
+- **Tabs Partitioning for Accounts Index**: Structured visual partitions to divide static wallets and banks from regular billing subscription accounts under separate sub-tabs.
+
 ## [1.4.3] - 2026-06-30
 ### Added
 - **Apple-Style Liquid Glass Navigation Bar**: Implemented a highly premium glossy navigation bar utilizing specular top-edge light highlights, diagonal shine gradients, and custom blur saturation styling (`.liquid-glass`).

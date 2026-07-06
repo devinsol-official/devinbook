@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import packageInfo from "../../package.json"
+import packageInfo from "../package.json"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"

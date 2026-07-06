@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import useSWR from "swr"
+import dynamic from "next/dynamic"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSubscription } from "@/contexts/SubscriptionContext"
 import { api } from "@/lib/api"
@@ -20,23 +21,27 @@ import {
   Download,
   Tag,
   Crown,
-  Lock
+  Lock,
+  Settings2
 } from "lucide-react"
-import { generateFinancialReport } from "@/lib/pdfReportGenerator"
-import { CategoryPieChart } from "./CategoryPieChart"
 import { RecentTransactions } from "./RecentTransactions"
 import { InitialSetup } from "./InitialSetup"
 import { AddTransaction } from "./AddTransaction"
 import { EditTransactionModal } from "./EditTransactionModal"
 import { EditCategoryModal } from "./EditCategoryModal"
 import { ShareReportModal } from "./ShareReportModal"
-import * as Icons from "lucide-react"
+import { categoryIcons } from "@/lib/categoryIcons"
 import { DashboardSkeleton } from "./SkeletonLoader"
 import { useToast } from "@/hooks/use-toast"
+import { DailyLogModal } from "./DailyLogModal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useSearchParams } from "next/navigation"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+import { SwipeableDailyLogCard } from "./SwipeableDailyLogCard"
+
+const CategoryPieChart = dynamic(
+  () => import("./CategoryPieChart").then((mod) => mod.CategoryPieChart),
+  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-slate-400">Loading chart...</div> }
+)
 
 interface Stats {
   balance: number
@@ -61,6 +66,39 @@ const CHART_COLORS = [
 
 export function Dashboard() {
   const { toast } = useToast()
+  const [isDailyModalOpen, setIsDailyModalOpen] = useState(false)
+  const [dailyLogDate, setDailyLogDate] = useState("")
+  const [selectedAccountIdForLog, setSelectedAccountIdForLog] = useState("")
+  const [selectedLogForEditing, setSelectedLogForEditing] = useState<any>(null)
+
+  // Use current local date formatted as YYYY-MM
+  const currentMonthStr = new Date().toISOString().split("T")[0].substring(0, 7)
+  const { data: dailyLogs, mutate: mutateDailyLogs } = useSWR(`daily-logs-${currentMonthStr}`, () => api.getDailyLogs(undefined, currentMonthStr))
+
+  const todayStr = new Date().toISOString().split("T")[0]
+
+  const handleQuickLog = async (acc: any) => {
+    if (!acc.defaultItems || acc.defaultItems.length === 0) {
+      toast({
+        title: "Configuration Required",
+        description: `Please set up items for ${acc.name} in account settings first.`,
+        variant: "destructive"
+      })
+      return
+    }
+    try {
+      await api.createOrUpdateDailyLog({
+        date: todayStr,
+        accountId: acc.id,
+        items: acc.defaultItems
+      })
+      toast({ title: "Success", description: `Daily deliveries logged for ${acc.name}!` })
+      mutateDailyLogs()
+      loadDashboardData()
+    } catch (err: any) {
+      toast({ title: "Failed to log", description: err.message, variant: "destructive" })
+    }
+  }
   const searchParams = useSearchParams()
   const { isPro, showUpgradeModal } = useSubscription()
   const [filter, setFilter] = useState("month")
@@ -128,7 +166,7 @@ export function Dashboard() {
       showUpgradeModal("PDF Export")
       return
     }
-    const doc = new jsPDF()
+    const { generateFinancialReport } = await import("@/lib/pdfReportGenerator")
     const currentStats = getFilteredStats()
     const periodLabel = filter === "month" ? "THIS MONTH" : filter === "week" ? "THIS WEEK" : filter.toUpperCase()
     await generateFinancialReport(allTransactions, currentStats, periodLabel)
@@ -169,7 +207,7 @@ export function Dashboard() {
   }
 
   const renderIcon = (iconName?: string) => {
-    const IconComponent = iconName && (Icons as any)[iconName] ? (Icons as any)[iconName] : Tag
+    const IconComponent = iconName && categoryIcons[iconName] ? categoryIcons[iconName] : Tag
     return <IconComponent className="h-5 w-5" />
   }
 
@@ -187,12 +225,25 @@ export function Dashboard() {
 
   const handleDeleteTransaction = async (transaction: any) => {
     if (!confirm("Are you sure you want to delete this transaction?")) return
+
+    const txId = transaction.id || transaction._id;
+    const currentTxList = Array.isArray(transactionsData) ? transactionsData : transactionsData?.data || [];
+    const updatedTxList = currentTxList.filter((t: any) => (t.id || t._id) !== txId);
+
+    // Optimistically update the UI cache
+    if (Array.isArray(transactionsData)) {
+      mutateTransactions(updatedTxList, { revalidate: false });
+    } else if (transactionsData && typeof transactionsData === "object") {
+      mutateTransactions({ ...transactionsData, data: updatedTxList }, { revalidate: false });
+    }
+
     try {
-      await api.deleteTransaction(transaction.id || transaction._id)
-      toast({ title: "Success", description: "Deleted successfully" })
-      loadDashboardData()
+      await api.deleteTransaction(txId);
+      toast({ title: "Success", description: "Deleted successfully" });
+      loadDashboardData();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      loadDashboardData(); // Rollback/Refetch
     }
   }
 
@@ -241,6 +292,64 @@ export function Dashboard() {
             )}
           </Button>
         </div>
+
+        {/* Daily Tracking Banners */}
+        {accounts.filter((a: any) => a.type === "regular billing").map((acc: any) => {
+          const accountLogs = dailyLogs?.filter((l: any) => l.accountId === acc.id) || []
+          const todayLog = accountLogs.find((l: any) => l.date && l.date.split("T")[0] === todayStr)
+          
+          return (
+            <SwipeableDailyLogCard
+              key={acc.id}
+              isLogged={!!todayLog}
+              onModify={() => {
+                setDailyLogDate(todayStr)
+                setSelectedAccountIdForLog(acc.id)
+                setSelectedLogForEditing(todayLog || null)
+                setIsDailyModalOpen(true)
+              }}
+              onClick={() => {
+                if (todayLog) {
+                  toast({
+                    title: "Already Logged",
+                    description: "Deliveries for today are already recorded. Slide left to edit.",
+                  })
+                } else {
+                  handleQuickLog(acc)
+                }
+              }}
+            >
+              <div className="glass bg-slate-900/60 rounded-[32px] p-6 border border-slate-800 shadow-xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+                    <span className="text-2xl">🥛</span>
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-black text-sm uppercase tracking-wide text-white">{acc.name}</h4>
+                    <p className="text-xs text-slate-400 font-medium">
+                      {todayLog 
+                        ? `Logged: ${todayLog.items.map((i: any) => `${i.name} (${i.quantity}${i.unit})`).join(", ")} (${todayLog.totalAmount} Rs)`
+                        : `Have you received your daily items? Tap to confirm.`
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {todayLog ? (
+                    <div className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Received
+                    </div>
+                  ) : (
+                    <div className="text-xs font-bold text-slate-400 bg-slate-800/40 border border-slate-800/60 px-3 py-1.5 rounded-xl">
+                      Tap to Log
+                    </div>
+                  )}
+                </div>
+              </div>
+            </SwipeableDailyLogCard>
+          )
+        })}
 
         {/* Filter Selection */}
         <div className="flex items-center gap-3">
@@ -440,7 +549,7 @@ export function Dashboard() {
                               setIsEditCategoryModalOpen(true);
                             }}
                           >
-                            <Icons.Settings2 className="h-3 w-3 text-muted-foreground" />
+                            <Settings2 className="h-3 w-3 text-muted-foreground" />
                           </Button>
                         </div>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
@@ -559,6 +668,27 @@ export function Dashboard() {
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
       />
+
+      {isDailyModalOpen && selectedAccountIdForLog && (
+        <DailyLogModal
+          isOpen={isDailyModalOpen}
+          onClose={() => {
+            setIsDailyModalOpen(false)
+            setSelectedAccountIdForLog("")
+            setSelectedLogForEditing(null)
+          }}
+          accountId={selectedAccountIdForLog}
+          defaultItems={
+            (accounts.find((a: any) => a.id === selectedAccountIdForLog)?.defaultItems || [])
+          }
+          date={dailyLogDate}
+          existingLog={selectedLogForEditing}
+          onSuccess={() => {
+            mutateDailyLogs()
+            loadDashboardData()
+          }}
+        />
+      )}
     </div>
   )
 }

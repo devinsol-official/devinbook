@@ -422,5 +422,34 @@ export const BLOG_POSTS: BlogPost[] = [
       
       <p>By tracking physical money as diligently as digital money, you plug those "mystery leaks" and ensure your financial data is 100% accurate.</p>
     `
+    },
+    {
+        slug: "introducing-daily-deliveries-regular-billing",
+        title: "Introducing Daily Deliveries & Regular Billing Accounts: Simplify Milk, Yogurt & Subscription Expenses",
+        subtitle: "Put Your Periodic Deliveries and Invoices on Autopilot inside DevinBook",
+        description: "Say goodbye to manual diary notebooks. Discover DevinBook's new Daily Deliveries tracker and specialized Regular Billing accounts to track periodic items and clear dues instantly.",
+        date: "July 06, 2026",
+        author: "Team Devinsol",
+        image: "/blogs/daily-deliveries.png",
+        category: "Product Update",
+        readTime: "5 min read",
+        keywords: ["daily deliveries", "milk billing", "regular billing account", "missed days tracker", "subscription expenses", "invoice management"],
+        content: `
+      <h2>The Hassle of Periodic Deliveries</h2>
+      <p>Whether it's the daily milk delivery, a yogurt supply, a newspaper boy, or other periodic household items, keeping track of daily deliveries is a common headache. Most families rely on physical calendar diaries or messy paper ledgers. When the milkman sends his invoice at the end of the month, you find yourself asking: <em>Did we receive milk on that Thursday? How much yogurt did we get? Did we pay the dues?</em></p>
+
+      <p>To solve this, we are thrilled to introduce <strong>Daily Deliveries & Regular Billing Accounts</strong> in DevinBook.</p>
+
+      <h3>How It Works</h3>
+      <ul>
+        <li><strong>Overview Prompt Banner:</strong> A premium, interactive card at the top of your dashboard prompts you each day: <em>"Have you received your daily deliveries today?"</em>. Click "Yes" to log them with your preset quantities in 1 second, or tap "Modify Qty" to adjust items.</li>
+        <li><strong>Dedicated Account Type:</strong> Configure a specialized account of type "regular billing" (e.g. "Milk Guy"). Every delivery logged dynamically deducts from this account's balance, keeping track of exactly what you owe him.</li>
+        <li><strong>Monthly Delivery Calendar:</strong> View your account's detailed ledger dashboard to see a grid of all days in the month. Received items are highlighted in green, future days in gray, and missing days in red. You can tap any past day to log retroactively!</li>
+        <li><strong>One-Tap Dues Settlement:</strong> Click "Record Payment" to credit your payments and instantly settle the account balance back to 0 Rs.</li>
+      </ul>
+
+      <h2>Get Started in Seconds</h2>
+      <p>To enable the daily tracking assistant, go to the Manage section, create a new account with the type <strong>Regular Billing</strong>, and the app will configure your delivery template (Milk, Yogurt, etc.) with custom quantities and unit prices. Streamline your monthly bills and take control of your household delivery ledger with DevinBook today!</p>
+    `
     }
 ];

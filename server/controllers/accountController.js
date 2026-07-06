@@ -3,7 +3,7 @@ const Transaction = require("../models/Transaction");
 
 exports.createAccount = async (req, res) => {
     try {
-        const { name, type, isDefault, isFeatured } = req.body;
+        const { name, type, isDefault, isFeatured, defaultItems, autoLog } = req.body;
 
         // If isDefault is true, unset other default accounts
         if (isDefault) {
@@ -15,7 +15,12 @@ exports.createAccount = async (req, res) => {
             name,
             type,
             isDefault: isDefault || false,
-            isFeatured: isFeatured || false
+            isFeatured: isFeatured || false,
+            autoLog: autoLog || false,
+            defaultItems: type === "regular billing" ? (defaultItems || [
+                { name: "Milk", quantity: 2, unit: "kg", pricePerUnit: 150 },
+                { name: "Yogurt", quantity: 0.5, unit: "kg", pricePerUnit: 200 }
+            ]) : undefined
         });
 
         res.status(201).json(account);
@@ -26,7 +31,7 @@ exports.createAccount = async (req, res) => {
 
 exports.getAccounts = async (req, res) => {
     try {
-        let accounts = await Account.find({ userId: req.user._id });
+        let accounts = await Account.find({ userId: req.user._id }).lean();
 
         // If no accounts exist, create a default "Main Wallet"
         if (accounts.length === 0) {
@@ -39,8 +44,10 @@ exports.getAccounts = async (req, res) => {
             accounts = [defaultAccount];
         }
 
-        // Calculate balances
-        const transactions = await Transaction.find({ userId: req.user._id });
+        // Calculate balances (only retrieve accountId, type, and amount)
+        const transactions = await Transaction.find({ userId: req.user._id })
+            .select("accountId type amount")
+            .lean();
 
         const accountsWithBalance = accounts.map(account => {
             const accountTransactions = transactions.filter(t =>
@@ -51,9 +58,11 @@ exports.getAccounts = async (req, res) => {
                 return t.type === "income" ? acc + t.amount : acc - t.amount;
             }, 0);
 
+            const obj = account.toObject ? account.toObject() : account;
+
             return {
-                ...account.toObject(),
-                id: account._id,
+                ...obj,
+                id: obj._id,
                 balance
             };
         });
@@ -66,7 +75,7 @@ exports.getAccounts = async (req, res) => {
 
 exports.updateAccount = async (req, res) => {
     try {
-        const { name, type, isDefault, isFeatured } = req.body;
+        const { name, type, isDefault, isFeatured, defaultItems, autoLog } = req.body;
 
         // If isDefault is being set to true, unset other default accounts
         if (isDefault) {
@@ -75,7 +84,7 @@ exports.updateAccount = async (req, res) => {
 
         const account = await Account.findOneAndUpdate(
             { _id: req.params.id, userId: req.user._id },
-            { name, type, isDefault, isFeatured },
+            { name, type, isDefault, isFeatured, autoLog, defaultItems: type === "regular billing" ? defaultItems : undefined },
             { new: true }
         );
 

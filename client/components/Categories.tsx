@@ -9,7 +9,7 @@ import { AddCategoryModal } from "./AddCategoryModal"
 import { EditCategoryModal } from "./EditCategoryModal"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
-import * as Icons from "lucide-react"
+import { categoryIcons } from "@/lib/categoryIcons"
 import { useSubscription } from "@/contexts/SubscriptionContext"
 
 interface Category {
@@ -70,7 +70,7 @@ export function Categories() {
 
   const renderIcon = (iconName?: string) => {
     if (!iconName) return <Tag className="h-6 w-6 text-muted-foreground" />
-    const IconComponent = (Icons as any)[iconName] || Tag
+    const IconComponent = categoryIcons[iconName] || Tag
     return <IconComponent className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
   }
 

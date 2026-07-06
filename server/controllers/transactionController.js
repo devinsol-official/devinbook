@@ -45,10 +45,14 @@ exports.getTransactions = async (req, res) => {
     const query = { userId: req.user._id };
     if (accountId) query.accountId = accountId;
 
-    let transactionQuery = Transaction.find(query).sort({ date: -1 });
+    let transactionQuery = Transaction.find(query)
+      .sort({ date: -1 })
+      .select("amount type description date categoryId accountId itemId createdAt")
+      .lean();
     
     // Support pagination if provided
     let total = 0;
+    let transactions = [];
     if (page && limit) {
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
@@ -64,7 +68,7 @@ exports.getTransactions = async (req, res) => {
     }
 
     const formattedTransactions = transactions.map(t => {
-      const trans = t.toObject();
+      const trans = { ...t };
       trans.id = trans._id;
 
       if (trans.categoryId) {

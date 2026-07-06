@@ -30,7 +30,7 @@ exports.createCategory = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
-    let categories = await Category.find({ userId: req.user._id });
+    let categories = await Category.find({ userId: req.user._id }).lean();
 
     // Ensure default categories exist for this user
     const hasDefaultExpense = categories.some(c => c.type === "expense" && c.isDefault);
@@ -58,10 +58,13 @@ exports.getCategories = async (req, res) => {
       categories.push(defInc);
     }
 
-    const formattedCategories = categories.map(cat => ({
-      ...cat.toObject(),
-      id: cat._id
-    }));
+    const formattedCategories = categories.map(cat => {
+      const obj = cat.toObject ? cat.toObject() : cat;
+      return {
+        ...obj,
+        id: obj._id
+      };
+    });
     res.json(formattedCategories);
   } catch (err) {
     res.status(500).json({ message: err.message });

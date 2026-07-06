@@ -13,6 +13,16 @@ const userSchema = new mongoose.Schema({
   currentChallenge: { type: String },
   whatsappNumber: { type: String, unique: true, sparse: true },
   apiKey: { type: String, unique: true, sparse: true },
+  dailySettings: {
+    accountId: { type: mongoose.Schema.Types.ObjectId, ref: "Account", default: null },
+    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: "Category", default: null },
+    defaultItems: [{
+      name: { type: String, required: true },
+      quantity: { type: Number, required: true },
+      unit: { type: String, default: "kg" },
+      pricePerUnit: { type: Number, required: true }
+    }]
+  },
   authenticators: [{
     credentialID: { type: Buffer, required: true },
     credentialPublicKey: { type: Buffer, required: true },

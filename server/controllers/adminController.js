@@ -145,11 +145,50 @@ const getSubscriptionStatus = async (req, res) => {
 };
 
 /**
+ * Helper to dynamically scan and expire subscriptions on admin actions
+ */
+const autoExpirePendingSubscriptions = async () => {
+  try {
+    const now = new Date();
+    const expiredUsers = await User.find({
+      plan: "pro",
+      planExpiresAt: { $lt: now },
+    });
+
+    if (expiredUsers.length > 0) {
+      for (const user of expiredUsers) {
+        user.plan = "free";
+        user.planActivatedAt = null;
+        user.planExpiresAt = null;
+        await user.save();
+
+        await SubscriptionLog.create({
+          user: user._id,
+          action: "Expired",
+          details: "Automated expiry on admin query",
+        });
+
+        // Send email asynchronously
+        sendEmail({
+          to: user.email,
+          subject: "Subscription Ended 😢",
+          html: subscriptionCancelledTemplate(user.name),
+        }).catch(err => console.error("Error sending expiry email:", err));
+      }
+      console.log(`[Auto Expiry] ✅ Expired ${expiredUsers.length} user(s) on-demand`);
+    }
+  } catch (err) {
+    console.error("[Auto Expiry] ❌ Error:", err.message);
+  }
+};
+
+/**
  * GET /api/admin/subscriptions/list
  * Lists all Pro users
  */
 const listSubscriptions = async (req, res) => {
   try {
+    await autoExpirePendingSubscriptions();
     const users = await User.find({ plan: "pro" })
       .select("name email plan planActivatedAt planExpiresAt")
       .sort({ planExpiresAt: 1 });
@@ -222,6 +261,7 @@ const expireSubscriptions = async () => {
  */
 const listUsers = async (req, res) => {
   try {
+    await autoExpirePendingSubscriptions();
     const users = await User.find({})
       .select("name email plan planActivatedAt planExpiresAt")
       .sort({ createdAt: -1 });
@@ -252,6 +292,7 @@ const listUsers = async (req, res) => {
  */
 const getUserDetails = async (req, res) => {
   try {
+    await autoExpirePendingSubscriptions();
     const user = await User.findById(req.params.id).select("-passwordHash");
     if (!user) return res.status(404).json({ message: "User not found" });
 

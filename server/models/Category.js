@@ -18,4 +18,6 @@ const categorySchema = new mongoose.Schema({
   }
 });
 
+categorySchema.index({ userId: 1 });
+
 module.exports = mongoose.model("Category", categorySchema);

@@ -17,12 +17,11 @@ import {
     Tag,
     Download
 } from "lucide-react"
-import { generateFinancialReport } from "@/lib/pdfReportGenerator"
 import { useToast } from "@/hooks/use-toast"
 import { AddTransaction } from "@/components/AddTransaction"
 import { EditTransactionModal } from "@/components/EditTransactionModal"
 import { SwipeableTransactionItem } from "@/components/SwipeableTransactionItem"
-import * as Icons from "lucide-react"
+import { categoryIcons } from "@/lib/categoryIcons"
 
 interface Transaction {
     id: string
@@ -92,12 +91,28 @@ export default function TransactionsPage() {
 
     const handleDeleteTransaction = async (transaction: Transaction) => {
         if (!confirm("Are you sure you want to delete this transaction?")) return
+        const txId = transaction.id || (transaction as any)._id
+
+        if (data) {
+            const optimisticData = data.map(pageData => {
+                if (pageData && Array.isArray(pageData.data)) {
+                    return {
+                        ...pageData,
+                        data: pageData.data.filter((t: any) => (t.id || t._id) !== txId)
+                    }
+                }
+                return pageData
+            })
+            mutateTransactions(optimisticData, { revalidate: false })
+        }
+
         try {
-            await api.deleteTransaction(transaction.id || (transaction as any)._id)
+            await api.deleteTransaction(txId)
             toast({ title: "Success", description: "Deleted successfully" })
             mutateTransactions()
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" })
+            mutateTransactions()
         }
     }
 
@@ -111,6 +126,7 @@ export default function TransactionsPage() {
             if (selected) accountName = selected.name.toUpperCase();
         }
 
+        const { generateFinancialReport } = await import("@/lib/pdfReportGenerator");
         await generateFinancialReport(transactions, { income, expenses, balance: totalBalance }, accountName, accountName.replace(/\s+/g, '_'));
         toast({
             title: "Report Generated",
@@ -133,7 +149,7 @@ export default function TransactionsPage() {
 
     const renderCategoryIcon = (category: any) => {
         if (!category?.icon) return <Tag className="h-5 w-5 text-muted-foreground" />
-        const IconComponent = (Icons as any)[category.icon] || Tag
+        const IconComponent = categoryIcons[category.icon] || Tag
         return <IconComponent className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
     }
 

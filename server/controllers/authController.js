@@ -41,6 +41,28 @@ exports.login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
+    if (user.plan === "pro" && user.planExpiresAt && user.planExpiresAt < new Date()) {
+      user.plan = "free";
+      user.planActivatedAt = null;
+      user.planExpiresAt = null;
+      await user.save();
+
+      const SubscriptionLog = require("../models/SubscriptionLog");
+      await SubscriptionLog.create({
+        user: user._id,
+        action: "Expired",
+        details: "Automated expiry on login",
+      });
+
+      const sendEmail = require("../utils/sendEmail");
+      const { subscriptionCancelledTemplate } = require("../utils/emailTemplates");
+      sendEmail({
+        to: user.email,
+        subject: "Subscription Ended 😢",
+        html: subscriptionCancelledTemplate(user.name),
+      }).catch(err => console.error("Error sending expiry email:", err));
+    }
+
     res.json({
       token: generateToken(user._id),
       user: formatUser(user),

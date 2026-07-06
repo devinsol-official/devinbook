@@ -208,14 +208,14 @@ class ApiClient {
     return this.request("/accounts")
   }
 
-  async createAccount(name: string, type: string, isDefault: boolean = false, isFeatured: boolean = false) {
+  async createAccount(name: string, type: string, isDefault: boolean = false, isFeatured: boolean = false, defaultItems?: any[], autoLog?: boolean) {
     return this.request("/accounts", {
       method: "POST",
-      body: JSON.stringify({ name, type, isDefault, isFeatured }),
+      body: JSON.stringify({ name, type, isDefault, isFeatured, defaultItems, autoLog }),
     })
   }
 
-  async updateAccount(id: string, data: { name?: string; type?: string; isDefault?: boolean; isFeatured?: boolean }) {
+  async updateAccount(id: string, data: { name?: string; type?: string; isDefault?: boolean; isFeatured?: boolean; defaultItems?: any[]; autoLog?: boolean }) {
     return this.request(`/accounts/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -338,6 +338,42 @@ class ApiClient {
 
   async getWebAuthnStatus() {
     return this.request("/webauthn/status")
+  }
+
+  // Daily Tracking Logs
+  async getDailyLogs(accountId?: string, month?: string) {
+    let query = ""
+    if (accountId || month) {
+      const params = new URLSearchParams()
+      if (accountId) params.append("accountId", accountId)
+      if (month) params.append("month", month)
+      query = `?${params.toString()}`
+    }
+    return this.request(`/daily-logs${query}`)
+  }
+
+  async createOrUpdateDailyLog(data: { date: string, accountId: string, items: Array<{ name: string, quantity: number, unit?: string, pricePerUnit: number }> }) {
+    return this.request("/daily-logs", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteDailyLog(id: string) {
+    return this.request(`/daily-logs/${id}`, {
+      method: "DELETE",
+    })
+  }
+
+  async getDailySettings() {
+    return this.request("/daily-logs/settings")
+  }
+
+  async updateDailySettings(data: { accountId: string, categoryId: string, defaultItems: Array<{ name: string, quantity: number, unit?: string, pricePerUnit: number }> }) {
+    return this.request("/daily-logs/settings", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
   }
 }
 

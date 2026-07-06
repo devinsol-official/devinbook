@@ -4,6 +4,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const compression = require("compression");
 const cron = require("node-cron");
 const connectDB = require("./config/db");
 const { expireSubscriptions } = require("./controllers/adminController");
@@ -19,6 +20,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const webauthnRoutes = require("./routes/webauthnRoutes");
 
 const app = express();
+app.use(compression());
 const fs = require('fs');
 const path = require('path');
 
@@ -52,6 +54,9 @@ app.use("/api/accounts", accountRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/webauthn", webauthnRoutes);
 
+const dailyLogRoutes = require("./routes/dailyLogRoutes");
+app.use("/api/daily-logs", dailyLogRoutes);
+
 const whatsappRoutes = require("./routes/whatsappRoutes");
 app.use("/api/whatsapp", whatsappRoutes);
 
@@ -72,6 +77,16 @@ cron.schedule("0 0 * * *", async () => {
 });
 
 console.log("⏰ Subscription expiry cron scheduled (midnight PKT)");
+
+const { runAutoLogCron } = require("./controllers/dailyLogController");
+cron.schedule("5 0 * * *", async () => {
+    await runAutoLogCron();
+}, {
+    scheduled: true,
+    timezone: "Asia/Karachi"
+});
+
+console.log("⏰ Daily deliveries auto-logging cron scheduled (00:05 PKT)");
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PORT = process.env.PORT || 5000;

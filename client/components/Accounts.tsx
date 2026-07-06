@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Plus, Edit, Trash2, Wallet, Landmark, User, CreditCard, Download, ArrowLeft, History, ChevronRight, Crown } from "lucide-react"
+import { Plus, Edit, Trash2, Wallet, Landmark, User, CreditCard, Download, ArrowLeft, History, ChevronRight, Crown, FileText } from "lucide-react"
 import { SwipeableTransactionItem } from "./SwipeableTransactionItem"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -13,6 +13,10 @@ import { EditAccountModal } from "./EditAccountModal"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer"
 import { format } from "date-fns"
 import { useSubscription } from "@/contexts/SubscriptionContext"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { ChevronLeft, Calendar } from "lucide-react"
+import { DailyLogModal } from "./DailyLogModal"
 
 interface Account {
     id: string
@@ -21,12 +25,15 @@ interface Account {
     isDefault: boolean
     isFeatured?: boolean
     balance?: number
+    defaultItems?: any[]
+    autoLog?: boolean
 }
 
 const ACCOUNT_TYPE_ICONS: Record<string, any> = {
     cash: Wallet,
     bank: Landmark,
     person: User,
+    "regular billing": History,
     other: CreditCard,
 }
 
@@ -34,6 +41,7 @@ const ACCOUNT_TYPE_COLORS: Record<string, string> = {
     cash: "text-blue-500 bg-blue-500/10",
     bank: "text-emerald-500 bg-emerald-500/10",
     person: "text-amber-500 bg-amber-500/10",
+    "regular billing": "text-indigo-500 bg-indigo-500/10",
     other: "text-slate-500 bg-slate-500/10",
 }
 
@@ -48,9 +56,107 @@ export function Accounts() {
     const [accountTransactions, setAccountTransactions] = useState<any[]>([])
     const [loadingTransactions, setLoadingTransactions] = useState(false)
 
+    const [dailyLogs, setDailyLogs] = useState<any[]>([])
+    const [loadingLogs, setLoadingLogs] = useState(false)
+    const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().substring(0, 7))
+    const [dailySettings, setDailySettings] = useState<any>(null)
+    const [isDailyLogModalOpen, setIsDailyLogModalOpen] = useState(false)
+    const [selectedDateForLog, setSelectedDateForLog] = useState("")
+    const [selectedLogForEditing, setSelectedLogForEditing] = useState<any>(null)
+    const [activeTab, setActiveTab] = useState<"standard" | "regular">("standard")
+
+    // For Record Payment
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+    const [paymentAmount, setPaymentAmount] = useState("")
+    const [recordingPayment, setRecordingPayment] = useState(false)
+
     useEffect(() => {
         loadAccounts()
+        loadDailySettings()
     }, [])
+
+    const loadDailySettings = async () => {
+        try {
+            const settings = await api.getDailySettings()
+            setDailySettings(settings)
+        } catch (error) {
+            console.error("Failed to load daily settings", error)
+        }
+    }
+
+    const loadDailyLogs = async (accountId: string, month: string) => {
+        try {
+            setLoadingLogs(true)
+            const data = await api.getDailyLogs(accountId, month)
+            setDailyLogs(data)
+        } catch (error) {
+            console.error("Failed to load daily logs", error)
+        } finally {
+            setLoadingLogs(false)
+        }
+    }
+
+    const handlePrevMonth = (accountId: string) => {
+        const [year, month] = currentMonth.split("-").map(Number)
+        const prev = new Date(year, month - 2, 1)
+        const newMonth = prev.toISOString().substring(0, 7)
+        setCurrentMonth(newMonth)
+        loadDailyLogs(accountId, newMonth)
+    }
+
+    const handleNextMonth = (accountId: string) => {
+        const [year, month] = currentMonth.split("-").map(Number)
+        const next = new Date(year, month, 1)
+        const newMonth = next.toISOString().substring(0, 7)
+        setCurrentMonth(newMonth)
+        loadDailyLogs(accountId, newMonth)
+    }
+
+    const handleRecordPayment = async (accountId: string) => {
+        if (!paymentAmount || Number(paymentAmount) <= 0) {
+            toast({ title: "Error", description: "Please enter a valid amount", variant: "destructive" })
+            return
+        }
+        setRecordingPayment(true)
+        try {
+            const categories = await api.getCategories()
+            const catId = categories[0]?.id;
+            await api.createTransaction({
+                amount: Number(paymentAmount),
+                type: "income",
+                categoryId: catId,
+                accountId,
+                description: `Payment Settlement - ${format(new Date(), "MMMM yyyy")}`,
+                date: new Date().toISOString().split("T")[0]
+            })
+            toast({ title: "Success", description: "Payment recorded successfully" })
+            setIsPaymentModalOpen(false)
+            setPaymentAmount("")
+            loadAccounts()
+            if (selectedAccountForDetails) {
+                const updatedAccs = await api.getAccounts()
+                const updatedAcc = updatedAccs.find((a: any) => a.id === selectedAccountForDetails.id)
+                if (updatedAcc) setSelectedAccountForDetails(updatedAcc)
+                loadAccountTransactions(selectedAccountForDetails.id)
+                loadDailyLogs(selectedAccountForDetails.id, currentMonth)
+            }
+        } catch (error: any) {
+            toast({ title: "Error", description: error.message || "Failed to record payment", variant: "destructive" })
+        } finally {
+            setRecordingPayment(false)
+        }
+    }
+
+    const getDaysInMonth = (monthStr: string) => {
+        const [year, month] = monthStr.split("-").map(Number)
+        const date = new Date(year, month - 1, 1)
+        const days = []
+        while (date.getMonth() === month - 1) {
+            days.push(new Date(date))
+            date.setDate(date.getDate() + 1)
+        }
+        return days
+    }
 
     const loadAccounts = async () => {
         try {
@@ -115,6 +221,23 @@ export function Accounts() {
         document.body.removeChild(link)
     }
 
+    const handleDownloadPDF = async (account: Account) => {
+        try {
+            const { generateDailyDeliveriesReport } = await import("@/lib/pdfReportGenerator")
+            const days = getDaysInMonth(currentMonth)
+            await generateDailyDeliveriesReport(
+                account,
+                dailyLogs,
+                accountTransactions,
+                currentMonth,
+                days
+            )
+            toast({ title: "Success", description: "PDF report downloaded successfully" })
+        } catch (error: any) {
+            toast({ title: "Error", description: "Failed to generate PDF: " + error.message, variant: "destructive" })
+        }
+    }
+
     const handleDeleteAccount = async (account: Account) => {
         if (!confirm(`Are you sure you want to delete "${account.name}"?`)) return
 
@@ -164,14 +287,55 @@ export function Accounts() {
                 </Button>
             </div>
 
+            <div className="flex bg-muted/40 p-1.5 rounded-[22px] border border-muted/20 mt-4">
+                <button
+                    onClick={() => setActiveTab("standard")}
+                    className={cn(
+                        "flex-1 py-3 text-center text-xs font-black uppercase tracking-wider rounded-[18px] transition-all",
+                        activeTab === "standard"
+                            ? "bg-white dark:bg-slate-900 shadow-sm text-foreground scale-[1.02]"
+                            : "text-muted-foreground hover:text-foreground"
+                    )}
+                >
+                    Standard Accounts
+                </button>
+                <button
+                    onClick={() => setActiveTab("regular")}
+                    className={cn(
+                        "flex-1 py-3 text-center text-xs font-black uppercase tracking-wider rounded-[18px] transition-all flex items-center justify-center gap-1.5",
+                        activeTab === "regular"
+                            ? "bg-white dark:bg-slate-900 shadow-sm text-foreground scale-[1.02]"
+                            : "text-muted-foreground hover:text-foreground"
+                    )}
+                >
+                    Regular Billing
+                    <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-black">
+                        {accounts.filter(a => a.type === "regular billing").length}
+                    </span>
+                </button>
+            </div>
+
             <div className="space-y-3">
-                {accounts.length === 0 ? (
-                    <div className="bg-white dark:bg-slate-900 border rounded-[32px] p-12 text-center text-muted-foreground shadow-sm">
-                        <Wallet className="h-8 w-8 mx-auto opacity-20 mb-2" />
-                        <p className="text-xs font-bold">No accounts found</p>
-                    </div>
-                ) : (
-                    accounts.map((account) => (
+                {(() => {
+                    const filteredAccounts = accounts.filter(a => 
+                        activeTab === "regular" ? a.type === "regular billing" : a.type !== "regular billing"
+                    )
+
+                    if (filteredAccounts.length === 0) {
+                        return (
+                            <div className="bg-white dark:bg-slate-900 border rounded-[32px] p-12 text-center text-muted-foreground shadow-sm">
+                                <Wallet className="h-8 w-8 mx-auto opacity-20 mb-2" />
+                                <p className="text-xs font-bold">
+                                    {activeTab === "regular" 
+                                        ? "No regular billing accounts found. Create one to track Milk, Yogurt, or subscriptions."
+                                        : "No standard accounts found"
+                                    }
+                                </p>
+                            </div>
+                        )
+                    }
+
+                    return filteredAccounts.map((account) => (
                         <SwipeableTransactionItem
                             key={account.id}
                             onDelete={() => handleDeleteAccount(account)}
@@ -185,6 +349,9 @@ export function Accounts() {
                             onClick={() => {
                                 setSelectedAccountForDetails(account)
                                 loadAccountTransactions(account.id)
+                                if (account.type === "regular billing") {
+                                    loadDailyLogs(account.id, currentMonth)
+                                }
                             }}
                             canDelete={!account.isDefault}
                         >
@@ -193,7 +360,7 @@ export function Accounts() {
                             />
                         </SwipeableTransactionItem>
                     ))
-                )}
+                })()}
             </div>
 
             <AddAccountModal
@@ -237,59 +404,206 @@ export function Accounts() {
                                 </div>
                             </DrawerHeader>
 
-                            <div className="flex items-center gap-3 px-8 my-4">
-                                <Button
-                                    onClick={() => handleDownloadCSV(selectedAccountForDetails)}
-                                    className="flex-1 h-12 rounded-2xl font-black bg-primary/10 text-primary hover:bg-primary/20"
-                                >
-                                    <Download className="h-4 w-4 mr-2" /> Export CSV
-                                </Button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto px-6 pb-20">
-                                <div className="space-y-4">
-                                    <h4 className="px-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                                        <History className="h-3 w-3" /> Recent History
-                                    </h4>
-
-                                    {loadingTransactions ? (
-                                        <div className="flex items-center justify-center py-20">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            {selectedAccountForDetails.type === "regular billing" ? (
+                                <>
+                                    {/* Action row with Month and Record Payment */}
+                                    <div className="flex flex-col gap-3 px-8 my-2">
+                                        <div className="flex items-center justify-between bg-muted/30 p-2.5 rounded-2xl">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-lg"
+                                                onClick={() => handlePrevMonth(selectedAccountForDetails.id)}
+                                            >
+                                                <ChevronLeft className="h-4 w-4" />
+                                            </Button>
+                                            <span className="font-black text-xs uppercase tracking-wider text-primary">
+                                                {format(new Date(`${currentMonth}-02`), "MMMM yyyy")}
+                                            </span>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-lg"
+                                                onClick={() => handleNextMonth(selectedAccountForDetails.id)}
+                                            >
+                                                <ChevronRight className="h-4 w-4" />
+                                            </Button>
                                         </div>
-                                    ) : accountTransactions.length === 0 ? (
-                                        <div className="p-12 text-center text-muted-foreground bg-muted/20 rounded-3xl border border-dashed">
-                                            <p className="text-xs font-bold">No transactions for this account</p>
+                                        <div className="flex items-center gap-3">
+                                            <Button
+                                                onClick={() => {
+                                                    setPaymentAmount(Math.abs(selectedAccountForDetails.balance || 0).toString())
+                                                    setIsPaymentModalOpen(true)
+                                                }}
+                                                className="flex-1 h-12 rounded-2xl font-black bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                                            >
+                                                Record Payment
+                                            </Button>
+                                            <Button
+                                                onClick={() => handleDownloadCSV(selectedAccountForDetails)}
+                                                variant="outline"
+                                                title="Download CSV Statement"
+                                                className="h-12 w-12 rounded-2xl border-2 flex items-center justify-center shrink-0 border-muted-foreground/20 text-muted-foreground hover:text-foreground"
+                                            >
+                                                <Download className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                onClick={() => handleDownloadPDF(selectedAccountForDetails)}
+                                                variant="outline"
+                                                title="Download PDF Ledger"
+                                                className="h-12 w-12 rounded-2xl border-2 flex items-center justify-center shrink-0 border-rose-500/20 text-rose-500 hover:bg-rose-500/5 hover:text-rose-600"
+                                            >
+                                                <FileText className="h-4 w-4" />
+                                            </Button>
                                         </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {accountTransactions.map((t) => (
-                                                <div key={t.id} className="p-4 bg-muted/30 rounded-3xl flex items-center justify-between group hover:bg-muted/50 transition-colors">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={cn(
-                                                            "w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg",
-                                                            t.type === "income" ? "bg-emerald-500 shadow-emerald-500/20" : "bg-rose-500 shadow-rose-500/20"
-                                                        )}>
-                                                            {t.type === "income" ? <Plus className="h-5 w-5" /> : <div className="w-4 h-1 bg-white rounded-full" />}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-black text-sm">{t.categoryId?.name || "Transaction"}</p>
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">
-                                                                {format(new Date(t.date), "MMM dd, yyyy")}
+                                    </div>
+
+                                    {/* Scrollable calendar view */}
+                                    <div className="flex-1 overflow-y-auto px-6 pb-20 mt-2">
+                                        <div className="space-y-4">
+                                            <h4 className="px-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                                <Calendar className="h-3 w-3" /> Monthly Delivery Log
+                                            </h4>
+
+                                            {loadingLogs ? (
+                                                <div className="flex items-center justify-center py-20">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2.5">
+                                                    {(() => {
+                                                        const days = getDaysInMonth(currentMonth)
+                                                        const todayStr = new Date().toISOString().split("T")[0]
+                                                        
+                                                        return days.map(day => {
+                                                            const dateStr = day.toISOString().split("T")[0]
+                                                            const log = dailyLogs.find(l => l.date && l.date.split("T")[0] === dateStr)
+                                                            const isFuture = dateStr > todayStr
+                                                            const isToday = dateStr === todayStr
+
+                                                            return (
+                                                                <div 
+                                                                    key={dateStr}
+                                                                    onClick={() => {
+                                                                        if (isFuture) return
+                                                                        setSelectedDateForLog(dateStr)
+                                                                        setSelectedLogForEditing(log || null)
+                                                                        setIsDailyLogModalOpen(true)
+                                                                    }}
+                                                                    className={cn(
+                                                                        "p-3 rounded-2xl flex items-center justify-between transition-all",
+                                                                        isFuture 
+                                                                            ? "bg-slate-50 dark:bg-slate-900/40 opacity-40 cursor-not-allowed border border-dashed border-slate-200 dark:border-slate-800"
+                                                                            : log 
+                                                                                ? "bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/10 cursor-pointer hover:bg-emerald-500/10"
+                                                                                : "bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/10 cursor-pointer hover:bg-rose-500/10"
+                                                                    )}
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={cn(
+                                                                            "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0",
+                                                                            isFuture 
+                                                                                ? "bg-slate-200 dark:bg-slate-800 text-slate-500"
+                                                                                : log 
+                                                                                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20" 
+                                                                                    : "bg-rose-500 text-white shadow-sm shadow-rose-500/20"
+                                                                        )}>
+                                                                            {format(day, "d")}
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold text-xs flex items-center gap-1.5">
+                                                                                {format(day, "eee, MMM d")}
+                                                                                {isToday && (
+                                                                                    <span className="text-[8px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">Today</span>
+                                                                                )}
+                                                                            </p>
+                                                                            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5 max-w-[240px] truncate">
+                                                                                {isFuture 
+                                                                                    ? "Scheduled" 
+                                                                                    : log 
+                                                                                        ? log.items.map((i: any) => `${i.name} (${i.quantity}${i.unit})`).join(", ") 
+                                                                                        : "Missing - Tap to Log"
+                                                                                }
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    {!isFuture && (
+                                                                        <div className="text-right">
+                                                                            <p className={cn(
+                                                                                "font-black text-xs",
+                                                                                log ? "text-emerald-500" : "text-rose-500"
+                                                                            )}>
+                                                                                {log ? `${log.totalAmount.toLocaleString()} Rs` : "0 Rs"}
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )
+                                                        })
+                                                    })()}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-3 px-8 my-4">
+                                        <Button
+                                            onClick={() => handleDownloadCSV(selectedAccountForDetails)}
+                                            className="flex-1 h-12 rounded-2xl font-black bg-primary/10 text-primary hover:bg-primary/20"
+                                        >
+                                            <Download className="h-4 w-4 mr-2" /> Export CSV
+                                        </Button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto px-6 pb-20">
+                                        <div className="space-y-4">
+                                            <h4 className="px-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                                                <History className="h-3 w-3" /> Recent History
+                                            </h4>
+
+                                            {loadingTransactions ? (
+                                                <div className="flex items-center justify-center py-20">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                                </div>
+                                            ) : accountTransactions.length === 0 ? (
+                                                <div className="p-12 text-center text-muted-foreground bg-muted/20 rounded-3xl border border-dashed">
+                                                    <p className="text-xs font-bold">No transactions for this account</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {accountTransactions.map((t) => (
+                                                        <div key={t.id} className="p-4 bg-muted/30 rounded-3xl flex items-center justify-between group hover:bg-muted/50 transition-colors">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={cn(
+                                                                    "w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg",
+                                                                    t.type === "income" ? "bg-emerald-500 shadow-emerald-500/20" : "bg-rose-500 shadow-rose-500/20"
+                                                                )}>
+                                                                    {t.type === "income" ? <Plus className="h-5 w-5" /> : <div className="w-4 h-1 bg-white rounded-full" />}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-black text-sm">{t.categoryId?.name || "Transaction"}</p>
+                                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">
+                                                                        {format(new Date(t.date), "MMM dd, yyyy")}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <p className={cn(
+                                                                "font-black",
+                                                                t.type === "income" ? "text-emerald-500" : "text-rose-500"
+                                                            )}>
+                                                                {t.type === "income" ? "+" : "-"} {t.amount}
                                                             </p>
                                                         </div>
-                                                    </div>
-                                                    <p className={cn(
-                                                        "font-black",
-                                                        t.type === "income" ? "text-emerald-500" : "text-rose-500"
-                                                    )}>
-                                                        {t.type === "income" ? "+" : "-"} {t.amount}
-                                                    </p>
+                                                    ))}
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            </div>
+                                    </div>
+                                </>
+                            )}
 
                             <DrawerFooter className="px-8 pb-10">
                                 <Button onClick={() => setSelectedAccountForDetails(null)} variant="outline" className="h-14 rounded-2xl font-black border-2">
@@ -300,6 +614,63 @@ export function Accounts() {
                     )}
                 </DrawerContent>
             </Drawer>
+
+            {selectedAccountForDetails && (
+                <DailyLogModal
+                    isOpen={isDailyLogModalOpen}
+                    onClose={() => setIsDailyLogModalOpen(false)}
+                    accountId={selectedAccountForDetails.id}
+                    defaultItems={selectedAccountForDetails.defaultItems || []}
+                    date={selectedDateForLog}
+                    existingLog={selectedLogForEditing}
+                    onSuccess={() => {
+                        loadDailyLogs(selectedAccountForDetails.id, currentMonth)
+                        loadAccounts()
+                    }}
+                />
+            )}
+
+            <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+                <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-white rounded-3xl p-6 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black">Record Payment</DialogTitle>
+                        <DialogDescription className="text-slate-400 text-xs">
+                            Record a settlement payment to reduce/clear outstanding dues.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Payment Amount</Label>
+                            <div className="flex items-center bg-slate-950 border border-slate-800 rounded-2xl px-4 h-14">
+                                <input
+                                    type="number"
+                                    value={paymentAmount}
+                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                    placeholder="Enter amount"
+                                    className="bg-transparent text-lg font-black text-white w-full outline-none"
+                                />
+                                <span className="text-sm font-black text-slate-400">Rs</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 pt-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsPaymentModalOpen(false)}
+                            className="flex-1 h-12 rounded-2xl font-bold border-slate-800 text-slate-300 hover:text-white"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={() => selectedAccountForDetails && handleRecordPayment(selectedAccountForDetails.id)}
+                            disabled={recordingPayment}
+                            className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg glow-emerald"
+                        >
+                            {recordingPayment ? "Saving..." : "Confirm Payment"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
