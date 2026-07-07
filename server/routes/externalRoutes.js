@@ -3,15 +3,27 @@ const Transaction = require("../models/Transaction");
 const Category = require("../models/Category");
 const Account = require("../models/Account");
 const { protectApiKey } = require("../middleware/apiMiddleware");
+const { getCategories } = require("../controllers/categoryController");
+const { getAccounts } = require("../controllers/accountController");
 
 const router = express.Router();
 
+router.get("/categories", protectApiKey, getCategories);
+router.get("/accounts", protectApiKey, getAccounts);
+
 router.post("/transaction", protectApiKey, async (req, res) => {
     try {
+        console.log("Received transaction payload:", req.body);
         const { amount, type, category_name, account_name, description } = req.body;
         const user = req.user;
 
         if (!amount || !type || !category_name || !account_name) {
+            console.log("Validation failed. Falsy check results:", {
+                amount: !amount,
+                type: !type,
+                category_name: !category_name,
+                account_name: !account_name
+            });
             return res.status(400).json({ message: "Missing required fields (amount, type, category_name, account_name)" });
         }
 
