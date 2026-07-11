@@ -15,8 +15,9 @@ interface Transaction {
   id: string
   amount: number
   type: "income" | "expense"
-  categoryId: any
+  categoryId?: any
   accountId?: any
+  toAccountId?: any
   itemId?: string
   description?: string
   date: string
@@ -48,11 +49,12 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [amount, setAmount] = useState("")
-  const [type, setType] = useState<"income" | "expense">("expense")
+  const [type, setType] = useState<"income" | "expense" | "transfer">("expense")
   const [categories, setCategories] = useState<Category[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState("")
   const [selectedAccountId, setSelectedAccountId] = useState("")
+  const [toAccountId, setToAccountId] = useState("")
   const [description, setDescription] = useState("")
   const [date, setDate] = useState("")
 
@@ -70,6 +72,8 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
       setSelectedCategoryId(catId ? String(catId) : "")
       const accId = transaction.accountId?._id || transaction.accountId?.id || transaction.accountId
       setSelectedAccountId(accId ? String(accId) : "")
+      const toAccId = transaction.toAccountId?._id || transaction.toAccountId?.id || transaction.toAccountId
+      setToAccountId(toAccId ? String(toAccId) : "")
       setDescription(transaction.description || "")
       setDate(transaction.date.split("T")[0])
     }
@@ -94,7 +98,7 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!transaction || !amount || !selectedCategoryId) {
+    if (!transaction || !amount || (type !== "transfer" && !selectedCategoryId) || (type === "transfer" && (!selectedAccountId || !toAccountId))) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -111,8 +115,9 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
       await api.updateTransaction(id, {
         amount: Number.parseFloat(amount),
         type,
-        categoryId: selectedCategoryId,
+        categoryId: type === "transfer" ? undefined : selectedCategoryId,
         accountId: selectedAccountId || undefined,
+        toAccountId: type === "transfer" ? (toAccountId || undefined) : undefined,
         itemId: transaction.itemId || undefined,
         description: description.trim() || undefined,
         date,
@@ -193,7 +198,7 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
           {/* Type */}
           <div className="space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Type</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Button
                 type="button"
                 onClick={() => setType("expense")}
@@ -210,29 +215,41 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
               >
                 Income
               </Button>
+              <Button
+                type="button"
+                onClick={() => setType("transfer")}
+                className={`h-12 rounded-2xl font-black transition-all ${type === "transfer" ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+              >
+                Transfer
+              </Button>
             </div>
           </div>
 
           {/* Category */}
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Group</Label>
-            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId} required>
-              <SelectTrigger className="h-14 rounded-2xl bg-muted/50 border-none font-bold">
-                <SelectValue placeholder="Select a group" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border-none shadow-2xl">
-                {categories.filter(c => c.type === type).map((category) => (
-                  <SelectItem key={category.id} value={category.id} className="rounded-xl font-bold">
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {type !== "transfer" && (
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Group</Label>
+              <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId} required>
+                <SelectTrigger className="h-14 rounded-2xl bg-muted/50 border-none font-bold">
+                  <SelectValue placeholder="Select a group" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                  {categories.filter(c => c.type === type).map((category) => (
+                    <SelectItem key={category.id} value={category.id} className="rounded-xl font-bold">
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Account */}
           <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Paid From / To</Label>
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+              {type === "transfer" ? "From Account" : "Paid From / To"}
+            </Label>
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId} required>
               <SelectTrigger className="h-14 rounded-2xl bg-muted/50 border-none font-bold">
                 <SelectValue placeholder="Select an account" />
@@ -246,6 +263,25 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
               </SelectContent>
             </Select>
           </div>
+
+          {/* To Account (Transfer only) */}
+          {type === "transfer" && (
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">To Account</Label>
+              <Select value={toAccountId} onValueChange={setToAccountId} required>
+                <SelectTrigger className="h-14 rounded-2xl bg-muted/50 border-none font-bold">
+                  <SelectValue placeholder="Select destination account" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                  {accounts.filter(a => a.type !== "regular billing" && a.id !== selectedAccountId).map((account) => (
+                    <SelectItem key={account.id} value={account.id} className="rounded-xl font-bold">
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Date */}
           <div className="space-y-2">

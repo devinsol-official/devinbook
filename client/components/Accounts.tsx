@@ -667,7 +667,7 @@ export function Accounts() {
                                                                     {t.type === "income" ? <Plus className="h-5 w-5" /> : <div className="w-4 h-1 bg-white rounded-full" />}
                                                                 </div>
                                                                 <div>
-                                                                    <p className="font-black text-sm">{t.categoryId?.name || "Transaction"}</p>
+                                                                    <p className="font-black text-sm">{t.description || t.categoryId?.name || "Transaction"}</p>
                                                                     <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">
                                                                         {format(new Date(t.date), "MMM dd, yyyy")}
                                                                     </p>
