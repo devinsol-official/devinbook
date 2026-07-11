@@ -2,6 +2,7 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, Label } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { useCurrency } from "@/contexts/CurrencyContext"
 
 interface CategoryData {
     name: string
@@ -14,6 +15,7 @@ interface CategoryPieChartProps {
 }
 
 export function CategoryPieChart({ data }: CategoryPieChartProps) {
+    const { currency } = useCurrency()
     if (data.length === 0) {
         return (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground font-medium italic">
@@ -92,7 +94,7 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
                                                 {payload[0].name}
                                             </p>
                                         </div>
-                                        <p className="font-black text-xl">{payload[0].value.toLocaleString()} <span className="text-xs text-muted-foreground font-bold">Rs</span></p>
+                                        <p className="font-black text-xl">{payload[0].value.toLocaleString()} <span className="text-xs text-muted-foreground font-bold">{currency}</span></p>
                                     </div>
                                 )
                             }

@@ -14,6 +14,7 @@ import { EditAccountModal } from "./EditAccountModal"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer"
 import { format } from "date-fns"
 import { useSubscription } from "@/contexts/SubscriptionContext"
+import { useCurrency } from "@/contexts/CurrencyContext"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { ChevronLeft, Calendar } from "lucide-react"
@@ -49,6 +50,7 @@ const ACCOUNT_TYPE_COLORS: Record<string, string> = {
 export function Accounts() {
     const { toast } = useToast()
     const { isPro, showUpgradeModal } = useSubscription()
+    const { currency } = useCurrency()
     const [accounts, setAccounts] = useState<Account[]>([])
     const [loading, setLoading] = useState(true)
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -443,7 +445,7 @@ export function Accounts() {
                                         "text-2xl font-black",
                                         (selectedAccountForDetails.balance || 0) >= 0 ? "text-emerald-500" : "text-rose-500"
                                     )}>
-                                        Rs {selectedAccountForDetails.balance?.toLocaleString()}
+                                        {currency} {selectedAccountForDetails.balance?.toLocaleString()}
                                     </p>
                                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Current Balance</p>
                                 </div>
@@ -579,7 +581,7 @@ export function Accounts() {
                                                                                 "font-black text-xs",
                                                                                 log ? "text-emerald-500" : "text-rose-500"
                                                                             )}>
-                                                                                {log ? `${log.totalAmount.toLocaleString()} Rs` : "0 Rs"}
+                                                                                {log ? `${log.totalAmount.toLocaleString()} ${currency}` : `0 ${currency}`}
                                                                             </p>
                                                                         </div>
                                                                     )}
@@ -732,7 +734,7 @@ export function Accounts() {
                                     placeholder="Enter amount"
                                     className="bg-transparent text-lg font-black text-white w-full outline-none"
                                 />
-                                <span className="text-sm font-black text-slate-400">Rs</span>
+                                <span className="text-sm font-black text-slate-400">{currency}</span>
                             </div>
                         </div>
                     </div>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useCurrency } from "@/contexts/CurrencyContext"
 
 interface Transaction {
   id: string
@@ -47,6 +48,7 @@ interface EditTransactionModalProps {
 
 export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }: EditTransactionModalProps) {
   const { toast } = useToast()
+  const { currency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [amount, setAmount] = useState("")
   const [type, setType] = useState<"income" | "expense" | "transfer">("expense")
@@ -191,7 +193,7 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
                 className="h-16 pr-10 rounded-2xl bg-muted/50 border-none text-2xl font-black text-right"
                 required
               />
-              <span className="ml-2 text-2xl font-black text-muted-foreground/30">Rs</span>
+              <span className="ml-2 text-2xl font-black text-muted-foreground/30">{currency}</span>
             </div>
           </div>
 

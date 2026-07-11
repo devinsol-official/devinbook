@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ArrowUpRight, ArrowDownLeft, ChevronRight, Edit2, Trash2 } from "lucide-react"
 import { SwipeableTransactionItem } from "./SwipeableTransactionItem"
+import { useCurrency } from "@/contexts/CurrencyContext"
 
 interface Transaction {
   id: string
@@ -23,9 +24,10 @@ interface RecentTransactionsProps {
   onDeleteTransaction?: (transaction: Transaction) => void
 }
 
-export function RecentTransactions({ transactions, onTransactionClick, onDeleteTransaction }: RecentTransactionsProps) {
+export function RecentTransactions({ transactions, onTransactionUpdate, onTransactionClick, onDeleteTransaction }: RecentTransactionsProps) {
+  const { currency } = useCurrency()
 
-  if (transactions.length === 0) {
+  if (!transactions || transactions.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-[32px]">
         <p className="font-bold">No activity yet</p>
@@ -76,7 +78,7 @@ export function RecentTransactions({ transactions, onTransactionClick, onDeleteT
             </div>
             <div className="flex items-center gap-2">
               <p className={`font-black tracking-tight ${transaction.type === "income" ? "text-green-600" : "text-slate-900 dark:text-white"}`}>
-                {transaction.type === "income" ? "+" : "-"}{transaction.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} Rs
+                {transaction.type === "income" ? "+" : "-"}{transaction.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {currency}
               </p>
               <ChevronRight className="h-4 w-4 text-muted-foreground/10" />
             </div>

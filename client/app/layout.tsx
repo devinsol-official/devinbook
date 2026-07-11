@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext"
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext"
 import { PaddleProvider } from "@/contexts/PaddleContext"
 import { ThemeProvider } from "@/components/theme-provider"
+import { CurrencyProvider } from "@/contexts/CurrencyContext"
 import { Toaster } from "@/components/ui/toaster"
 import { UpgradeModal } from "@/components/UpgradeModal"
 
@@ -107,9 +108,11 @@ html {
           <AuthProvider>
             <SubscriptionProvider>
               <PaddleProvider>
-                {children}
-                <UpgradeModal />
-                <Toaster />
+                <CurrencyProvider>
+                  {children}
+                  <UpgradeModal />
+                  <Toaster />
+                </CurrencyProvider>
               </PaddleProvider>
             </SubscriptionProvider>
           </AuthProvider>

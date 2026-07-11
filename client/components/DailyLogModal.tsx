@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Trash2, Edit } from "lucide-react"
+import { useCurrency } from "@/contexts/CurrencyContext"
 
 interface DailyItem {
   name: string
@@ -36,6 +37,7 @@ export function DailyLogModal({
   onSuccess
 }: DailyLogModalProps) {
   const { toast } = useToast()
+  const { currency } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState<DailyItem[]>([])
 
@@ -201,13 +203,13 @@ export function DailyLogModal({
                 <div className="space-y-1 flex-1">
                   <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Price ({item.unit})</label>
                   <div className="flex items-center bg-slate-950/20 border border-slate-800/40 rounded-xl px-3 h-8 text-slate-400 text-xs font-bold">
-                    <span>{item.pricePerUnit} Rs</span>
+                    <span>{item.pricePerUnit} {currency}</span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0 min-w-[70px]">
                   <p className="text-[9px] font-black uppercase text-slate-500">Total</p>
-                  <p className="text-sm font-black text-emerald-400">{(item.quantity * item.pricePerUnit).toLocaleString()} Rs</p>
+                  <p className="text-sm font-black text-emerald-400">{(item.quantity * item.pricePerUnit).toLocaleString()} {currency}</p>
                 </div>
               </div>
             </div>
@@ -217,7 +219,7 @@ export function DailyLogModal({
         <div className="flex justify-end items-center py-2 border-t border-slate-800/60 mt-2">
           <div className="text-right">
             <p className="text-[10px] font-black uppercase text-slate-400">Billing Sum</p>
-            <p className="text-xl font-black text-white">{totalAmount.toLocaleString()} Rs</p>
+            <p className="text-xl font-black text-white">{totalAmount.toLocaleString()} {currency}</p>
           </div>
         </div>
 

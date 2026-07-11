@@ -5,6 +5,7 @@ import useSWR from "swr"
 import dynamic from "next/dynamic"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSubscription } from "@/contexts/SubscriptionContext"
+import { useCurrency } from "@/contexts/CurrencyContext"
 import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
@@ -67,6 +68,7 @@ const CHART_COLORS = [
 
 export function Dashboard() {
   const { toast } = useToast()
+  const { currency } = useCurrency()
   const [isDailyModalOpen, setIsDailyModalOpen] = useState(false)
   const [dailyLogDate, setDailyLogDate] = useState("")
   const [selectedAccountIdForLog, setSelectedAccountIdForLog] = useState("")
@@ -329,7 +331,7 @@ export function Dashboard() {
                     <h4 className="font-black text-sm uppercase tracking-wide text-white">{acc.name}</h4>
                     <p className="text-xs text-slate-400 font-medium">
                       {todayLog 
-                        ? `Logged: ${todayLog.items.map((i: any) => `${i.name} (${i.quantity}${i.unit})`).join(", ")} (${todayLog.totalAmount} Rs)`
+                        ? `Logged: ${todayLog.items.map((i: any) => `${i.name} (${i.quantity}${i.unit})`).join(", ")} (${todayLog.totalAmount} ${currency})`
                         : `Have you received your daily items? Tap to confirm.`
                       }
                     </p>
@@ -379,7 +381,7 @@ export function Dashboard() {
               <div className="space-y-1">
                 <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Total Balance</p>
                 <h2 className="text-5xl font-black tracking-tighter">
-                  {(accounts.reduce((sum: number, acc: any) => sum + acc.balance, 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })} Rs
+                  {(accounts.reduce((sum: number, acc: any) => sum + acc.balance, 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })} {currency}
                 </h2>
               </div>
 
@@ -389,7 +391,7 @@ export function Dashboard() {
                   {accounts.filter((a: any) => a.isFeatured).map((acc: any) => (
                     <div key={acc.id} className="space-y-0.5">
                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{acc.name}</p>
-                      <p className="font-black text-sm">{(acc.balance || 0).toLocaleString()} Rs</p>
+                      <p className="font-black text-sm">{(acc.balance || 0).toLocaleString()} {currency}</p>
                     </div>
                   ))}
                 </div>
@@ -402,7 +404,7 @@ export function Dashboard() {
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-400 font-bold uppercase">Income</p>
-                    <p className="font-bold text-sm text-green-400">+{(currentStats?.income || 0).toLocaleString()} Rs</p>
+                    <p className="font-bold text-sm text-green-400">+{(currentStats?.income || 0).toLocaleString()} {currency}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -411,7 +413,7 @@ export function Dashboard() {
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-400 font-bold uppercase">Spent</p>
-                    <p className="font-bold text-sm text-red-400">-{(currentStats?.expenses || 0).toLocaleString()} Rs</p>
+                    <p className="font-bold text-sm text-red-400">-{(currentStats?.expenses || 0).toLocaleString()} {currency}</p>
                   </div>
                 </div>
               </div>
@@ -579,7 +581,7 @@ export function Dashboard() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="font-black text-lg">{cat.value.toLocaleString()} Rs</p>
+                        <p className="font-black text-lg">{cat.value.toLocaleString()} {currency}</p>
                       </div>
                       <div className="flex items-center">
                         {expandedCategory === cat.id ? (
@@ -606,7 +608,7 @@ export function Dashboard() {
                                 {new Date(tx.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                               </p>
                             </div>
-                            <p className="font-black text-sm">{tx.amount.toLocaleString()} Rs</p>
+                            <p className="font-black text-sm">{tx.amount.toLocaleString()} {currency}</p>
                           </div>
                         ))}
                       </div>

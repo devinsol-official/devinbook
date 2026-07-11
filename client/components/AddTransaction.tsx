@@ -13,6 +13,7 @@ import { categoryIcons } from "@/lib/categoryIcons"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
+import { useCurrency } from "@/contexts/CurrencyContext"
 
 interface Category {
   id: string
@@ -51,6 +52,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
   const activeBgLight = isIncome ? "bg-green-50" : isTransfer ? "bg-blue-50" : "bg-red-50"
 
   // Form state
+  const { currency } = useCurrency()
   const [amount, setAmount] = useState("")
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -342,7 +344,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
                     className={`border-none bg-transparent text-right pr-2 text-5xl font-black h-full w-full focus:outline-none placeholder:text-muted-foreground/5 ${activeText} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0 leading-none`}
                     autoFocus
                   />
-                  <span className={`text-xl font-black ${activeText} mt-1 ml-1 opacity-20`}>Rs</span>
+                  <span className={`text-xl font-black ${activeText} mt-1 ml-1 opacity-20`}>{currency}</span>
                 </div>
               </div>
 

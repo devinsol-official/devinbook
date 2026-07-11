@@ -4,9 +4,11 @@ import { useState, useEffect } from "react"
 
 import { useAuth } from "@/contexts/AuthContext"
 import { useSubscription } from "@/contexts/SubscriptionContext"
+import { useCurrency, CURRENCIES } from "@/contexts/CurrencyContext"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/lib/api"
 import { startRegistration } from "@simplewebauthn/browser"
 import {
@@ -56,6 +58,7 @@ import { usePaddleCheckout } from "@/hooks/usePaddleCheckout"
 export function Settings() {
   const { user, logout, updateUser } = useAuth()
   const { isPro, showUpgradeModal, daysRemaining, planExpiresAt } = useSubscription()
+  const { currency, setCurrency } = useCurrency()
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
   const router = useRouter()
@@ -356,6 +359,30 @@ export function Settings() {
               checked={theme === "dark"}
               onCheckedChange={handleThemeChange}
             />
+          </div>
+
+          <div className="p-6 flex items-center justify-between border-b">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center">
+                <CreditCard className="h-5 w-5 text-indigo-500" />
+              </div>
+              <div>
+                <p className="font-black text-sm">Currency</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Select your primary currency</p>
+              </div>
+            </div>
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger className="w-[120px] rounded-xl font-bold bg-background border border-border">
+                <SelectValue placeholder="Currency" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl font-bold">
+                {CURRENCIES.map((curr) => (
+                  <SelectItem key={curr.symbol} value={curr.symbol} className="rounded-lg cursor-pointer">
+                    {curr.symbol} - {curr.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="p-6 flex items-center justify-between border-b">
