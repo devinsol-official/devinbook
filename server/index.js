@@ -34,6 +34,10 @@ app.use(cors({
     origin: ["http://localhost:3000", "http://192.168.1.21:3000", "http://192.168.1.13:3000", "http://192.168.1.13:8081", 'https://devinbook.devinsol.com', 'http://192.168.1.6:3000', 'http://192.168.137.1:3000'],
     credentials: true
 }));
+const { handleWebhook } = require("./controllers/paddleController");
+
+app.post("/api/paddle/webhook", express.raw({ type: "application/json" }), handleWebhook);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -65,6 +69,9 @@ app.use("/api/external", externalRoutes);
 
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 app.use("/api/subscription", subscriptionRoutes);
+
+const paddleRoutes = require("./routes/paddleRoutes");
+app.use("/api/paddle", paddleRoutes);
 
 // ─── Midnight Cron: expire subscriptions every night at 00:00 ───────────────
 // Runs at 00:00 every night server time

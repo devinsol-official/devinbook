@@ -5,6 +5,7 @@ import { Outfit } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext"
+import { PaddleProvider } from "@/contexts/PaddleContext"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { UpgradeModal } from "@/components/UpgradeModal"
@@ -105,9 +106,11 @@ html {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <SubscriptionProvider>
-              {children}
-              <UpgradeModal />
-              <Toaster />
+              <PaddleProvider>
+                {children}
+                <UpgradeModal />
+                <Toaster />
+              </PaddleProvider>
             </SubscriptionProvider>
           </AuthProvider>
         </ThemeProvider>

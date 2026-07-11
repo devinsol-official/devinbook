@@ -44,17 +44,27 @@ exports.getAccounts = async (req, res) => {
             accounts = [defaultAccount];
         }
 
-        // Calculate balances (only retrieve accountId, type, and amount)
+        // Calculate balances (only retrieve accountId, toAccountId, type, and amount)
         const transactions = await Transaction.find({ userId: req.user._id })
-            .select("accountId type amount")
+            .select("accountId toAccountId type amount")
             .lean();
 
         const accountsWithBalance = accounts.map(account => {
+            const accountIdStr = account._id.toString();
             const accountTransactions = transactions.filter(t =>
-                t.accountId && t.accountId.toString() === account._id.toString()
+                (t.accountId && t.accountId.toString() === accountIdStr) ||
+                (t.toAccountId && t.toAccountId.toString() === accountIdStr)
             );
 
             const balance = accountTransactions.reduce((acc, t) => {
+                if (t.type === "transfer") {
+                    if (t.accountId && t.accountId.toString() === accountIdStr) {
+                        return acc - t.amount; // Outgoing transfer
+                    } else if (t.toAccountId && t.toAccountId.toString() === accountIdStr) {
+                        return acc + t.amount; // Incoming transfer
+                    }
+                    return acc;
+                }
                 return t.type === "income" ? acc + t.amount : acc - t.amount;
             }, 0);
 

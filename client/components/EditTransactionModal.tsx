@@ -238,7 +238,7 @@ export function EditTransactionModal({ transaction, isOpen, onClose, onSuccess }
                 <SelectValue placeholder="Select an account" />
               </SelectTrigger>
               <SelectContent className="rounded-2xl border-none shadow-2xl">
-                {accounts.map((account) => (
+                {accounts.filter(a => a.type !== "regular billing").map((account) => (
                   <SelectItem key={account.id} value={account.id} className="rounded-xl font-bold">
                     {account.name}
                   </SelectItem>

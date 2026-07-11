@@ -38,7 +38,7 @@ export default function TransactionsPage() {
     const { user } = useAuth()
     const { toast } = useToast()
     const [isAdding, setIsAdding] = useState(false)
-    const [addType, setAddType] = useState<"income" | "expense">("expense")
+    const [addType, setAddType] = useState<"income" | "expense" | "transfer">("expense")
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [selectedAccountId, setSelectedAccountId] = useState<string>("all")
@@ -221,6 +221,25 @@ export default function TransactionsPage() {
                                 <ArrowUpRight className="h-4 w-4" />
                             </div>
                             <span className="font-bold">Add Spent</span>
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                const standardAccounts = accounts.filter((a: any) => a.type !== "regular billing");
+                                if (standardAccounts.length < 2) {
+                                    toast({
+                                        title: "Unable to transfer",
+                                        description: "You need more than one standard account to transfer funds.",
+                                        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
+                                    });
+                                    return;
+                                }
+                                setAddType("transfer");
+                                setIsAdding(true);
+                            }}
+                            className="w-14 h-14 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center shadow-lg shadow-blue-600/20"
+                            title="Transfer Funds"
+                        >
+                            <Wallet className="h-5 w-5" />
                         </Button>
                         <Button
                             onClick={handleDownloadPDF}

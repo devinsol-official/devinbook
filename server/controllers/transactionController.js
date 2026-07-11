@@ -3,10 +3,17 @@ const Account = require("../models/Account");
 
 exports.createTransaction = async (req, res) => {
   try {
-    let { accountId } = req.body;
+    let { accountId, toAccountId, type, categoryId } = req.body;
 
-    // If no accountId provided, use the default account
-    if (!accountId) {
+    if (type === "transfer") {
+      if (!accountId || !toAccountId) {
+        return res.status(400).json({ message: "Source and destination accounts are required for transfers." });
+      }
+      categoryId = undefined; // Transfers do not have a category
+    }
+
+    // If no accountId provided and not a transfer, use the default account
+    if (!accountId && type !== "transfer") {
       const defaultAccount = await Account.findOne({ userId: req.user._id, isDefault: true });
       if (defaultAccount) {
         accountId = defaultAccount._id;
@@ -31,6 +38,8 @@ exports.createTransaction = async (req, res) => {
     const transaction = await Transaction.create({
       ...req.body,
       accountId,
+      toAccountId,
+      categoryId,
       userId: req.user._id
     });
     res.status(201).json(transaction);
@@ -43,11 +52,13 @@ exports.getTransactions = async (req, res) => {
   try {
     const { accountId, page, limit } = req.query;
     const query = { userId: req.user._id };
-    if (accountId) query.accountId = accountId;
+    if (accountId) {
+      query.$or = [{ accountId: accountId }, { toAccountId: accountId }];
+    }
 
     let transactionQuery = Transaction.find(query)
       .sort({ date: -1 })
-      .select("amount type description date categoryId accountId itemId createdAt")
+      .select("amount type description date categoryId accountId toAccountId itemId createdAt")
       .lean();
     
     // Support pagination if provided
@@ -102,13 +113,26 @@ exports.getTransactions = async (req, res) => {
 // Update Transaction
 exports.updateTransaction = async (req, res) => {
   try {
-    const transaction = await Transaction.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user._id },
+    const transaction = await Transaction.findById(req.params.id);
+    if (!transaction) return res.status(404).json({ message: "Transaction not found" });
+
+    if (transaction.userId.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    if (req.body.type === "transfer") {
+      req.body.categoryId = undefined;
+      if (!req.body.accountId || !req.body.toAccountId) {
+        return res.status(400).json({ message: "Source and destination accounts are required for transfers." });
+      }
+    }
+
+    const updated = await Transaction.findByIdAndUpdate(
+      req.params.id,
       req.body,
       { new: true }
     );
-    if (!transaction) return res.status(404).json({ message: "Transaction not found" });
-    res.json(transaction);
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

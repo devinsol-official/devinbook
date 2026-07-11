@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Plus, Check, Search, X, Wallet, Tag, Calendar as CalendarIcon, Clock } from "lucide-react"
+import { ArrowLeft, Plus, Check, Search, X, Tag, Calendar as CalendarIcon, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { AddCategoryModal } from "./AddCategoryModal"
@@ -31,10 +31,11 @@ interface Account {
 interface AddTransactionProps {
   onBack: () => void
   onSuccess: () => void
-  initialType?: "income" | "expense"
+  initialType?: "income" | "expense" | "transfer"
+  initialAccountId?: string
 }
 
-export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: AddTransactionProps) {
+export function AddTransaction({ onBack, onSuccess, initialType = "expense", initialAccountId }: AddTransactionProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
@@ -42,17 +43,19 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
 
   // Theme colors
   const isIncome = initialType === "income"
-  const activeColor = isIncome ? "bg-green-600" : "bg-red-600"
-  const activeText = isIncome ? "text-green-600" : "text-red-600"
-  const activeShadow = isIncome ? "shadow-green-600/30" : "shadow-red-600/30"
-  const activeBorder = isIncome ? "border-green-600" : "border-red-600"
-  const activeBgLight = isIncome ? "bg-green-50" : "bg-red-50"
+  const isTransfer = initialType === "transfer"
+  const activeColor = isIncome ? "bg-green-600" : isTransfer ? "bg-blue-600" : "bg-red-600"
+  const activeText = isIncome ? "text-green-600" : isTransfer ? "text-blue-600" : "text-red-600"
+  const activeShadow = isIncome ? "shadow-green-600/30" : isTransfer ? "shadow-blue-600/30" : "shadow-red-600/30"
+  const activeBorder = isIncome ? "border-green-600" : isTransfer ? "border-blue-600" : "border-red-600"
+  const activeBgLight = isIncome ? "bg-green-50" : isTransfer ? "bg-blue-50" : "bg-red-50"
 
   // Form state
   const [amount, setAmount] = useState("")
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
+  const [toAccountId, setToAccountId] = useState<string | null>(null)
   const [description, setDescription] = useState("")
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -69,7 +72,30 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
 
   useEffect(() => {
     loadData()
-  }, [])
+    if (initialType === "transfer") {
+      setIsAmountPopupOpen(true)
+    }
+  }, [initialType])
+
+  useEffect(() => {
+    if (isTransfer && accounts.length > 0) {
+      const standardAccounts = accounts.filter(a => a.type !== "regular billing");
+      if (standardAccounts.length < 2) {
+        toast({
+          title: "Unable to transfer",
+          description: "You need more than one standard account to transfer funds.",
+          className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
+        })
+        if (onBack) onBack(); // close or fallback
+      }
+    }
+  }, [isTransfer, accounts, onBack, toast])
+
+  useEffect(() => {
+    if (isTransfer && toAccountId === selectedAccountId) {
+      setToAccountId(null)
+    }
+  }, [selectedAccountId, isTransfer])
 
   useEffect(() => {
     let filtered = categories.filter(c => c.type === initialType)
@@ -89,7 +115,9 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
       setAccounts(accountsData)
 
       const defaultAcc = accountsData.find((a: Account) => a.isDefault)
-      if (defaultAcc) {
+      if (initialAccountId) {
+        setSelectedAccountId(initialAccountId)
+      } else if (defaultAcc) {
         setSelectedAccountId(defaultAcc.id)
       } else if (accountsData.length > 0) {
         setSelectedAccountId(accountsData[0].id)
@@ -98,7 +126,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
       toast({
         title: "Error",
         description: "Failed to load data",
-        variant: "destructive",
+        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
       })
     }
   }
@@ -122,29 +150,49 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
       toast({
         title: "Error",
         description: "Please enter a valid amount",
-        variant: "destructive",
+        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
       })
       return
     }
 
-    if (!selectedCategoryId) {
+    if (!isTransfer && !selectedCategoryId) {
       toast({
         title: "Error",
         description: "Please select a group",
-        variant: "destructive",
+        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
+      })
+      return
+    }
+
+    if (isTransfer && (!selectedAccountId || !toAccountId)) {
+      toast({
+        title: "Error",
+        description: "Please select source and destination accounts",
+        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
+      })
+      return
+    }
+
+    if (isTransfer && selectedAccountId === toAccountId) {
+      toast({
+        title: "Error",
+        description: "Source and destination accounts must be different",
+        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
       })
       return
     }
 
     setLoading(true)
     try {
+      const combinedDate = new Date(`${date}T${time}:00`)
       await api.createTransaction({
-        amount: Number.parseFloat(amount),
+        amount: Number(amount),
+        categoryId: isTransfer ? undefined : selectedCategoryId,
+        accountId: selectedAccountId,
+        toAccountId: isTransfer ? toAccountId : undefined,
         type: initialType,
-        categoryId: selectedCategoryId,
-        accountId: selectedAccountId || undefined,
-        description: description.trim() || undefined,
-        date: new Date(`${date}T${time}:00`).toISOString(),
+        description,
+        date: combinedDate.toISOString(),
       })
 
       toast({
@@ -157,7 +205,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
       toast({
         title: "Error",
         description: error.message || "Failed to add",
-        variant: "destructive",
+        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
       })
     } finally {
       setLoading(false)
@@ -259,7 +307,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
         <DrawerContent className="max-w-[450px] mx-auto rounded-t-[40px] border-none shadow-2xl bg-white dark:bg-slate-900 border-t overflow-hidden max-h-[96vh]">
           <div className="mx-auto w-12 h-1.5 bg-muted/30 rounded-full mt-4 mb-2 shrink-0" />
           <DrawerHeader className="sr-only">
-            <DrawerTitle>Add {initialType === "income" ? "Income" : "Expense"}</DrawerTitle>
+            <DrawerTitle>{isTransfer ? "Transfer Funds" : `Add ${initialType === "income" ? "Income" : "Expense"}`}</DrawerTitle>
             <DrawerDescription>Enter the amount and a note for this transaction</DrawerDescription>
           </DrawerHeader>
           <div className="overflow-y-auto w-full px-6 pt-2 pb-10">
@@ -272,14 +320,16 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
             >
               {/* Category Icon + Amount Row */}
               <div className="flex items-center justify-between gap-4 mt-2 px-2">
-                <div className="flex flex-col items-center shrink-0">
-                  <div className={`w-14 h-14 rounded-[20px] ${activeColor} text-white flex items-center justify-center shadow-lg ${activeShadow}`}>
-                    {renderIcon(pendingCategory?.icon)}
+                {!isTransfer && (
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className={`w-14 h-14 rounded-[20px] ${activeColor} text-white flex items-center justify-center shadow-lg ${activeShadow}`}>
+                      {renderIcon(pendingCategory?.icon)}
+                    </div>
+                    <p className={`text-[9px] font-black uppercase tracking-[0.1em] mt-1.5 ${activeText}`}>
+                      {pendingCategory?.name}
+                    </p>
                   </div>
-                  <p className={`text-[9px] font-black uppercase tracking-[0.1em] mt-1.5 ${activeText}`}>
-                    {pendingCategory?.name}
-                  </p>
-                </div>
+                )}
 
                 <div className="flex-1 relative flex items-center justify-end h-16">
                   <input
@@ -298,9 +348,11 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
 
               {/* Account Selection */}
               <div className="space-y-3 pt-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Select Account</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">
+                  {isTransfer ? "From Account (Source)" : "Select Account"}
+                </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  {accounts.map((acc) => (
+                  {accounts.filter(a => a.type !== "regular billing").map((acc) => (
                     <button
                       key={acc.id}
                       type="button"
@@ -317,6 +369,29 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
                   ))}
                 </div>
               </div>
+
+              {isTransfer && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">To Account (Destination)</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {accounts.filter(a => a.type !== "regular billing" && a.id !== selectedAccountId).map((acc) => (
+                      <button
+                        key={`to-${acc.id}`}
+                        type="button"
+                        onClick={() => setToAccountId(acc.id)}
+                        className={cn(
+                          "px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2",
+                          toAccountId === acc.id
+                            ? `${activeBorder} ${activeBgLight} ${activeText}`
+                            : "bg-muted/50 border-transparent text-muted-foreground"
+                        )}
+                      >
+                        {acc.name.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Note Field in Popup */}
               <div className="space-y-2">
@@ -378,7 +453,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
                   disabled={loading || !amount}
                   className={`w-full h-16 rounded-[24px] text-lg font-black shadow-2xl transition-all active:scale-95 ${activeColor} text-white hover:opacity-90 ${activeShadow}`}
                 >
-                  {loading ? "Processing..." : `Add ${initialType === 'income' ? 'Income' : 'Spending'}`}
+                  {loading ? "Processing..." : isTransfer ? "Transfer Funds" : `Add ${initialType === 'income' ? 'Income' : 'Spending'}`}
                 </Button>
               </div>
             </form>
@@ -390,7 +465,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense" }: A
         isOpen={isAddCategoryOpen}
         onClose={() => setIsAddCategoryOpen(false)}
         onSuccess={handleAddCategorySuccess}
-        initialType={initialType}
+        initialType={initialType === 'transfer' ? 'expense' : initialType}
       />
     </div>
   )

@@ -2,11 +2,12 @@ const mongoose = require("mongoose");
 
 const transactionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  categoryId: { type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true },
+  categoryId: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
   accountId: { type: mongoose.Schema.Types.ObjectId, ref: "Account", required: true },
+  toAccountId: { type: mongoose.Schema.Types.ObjectId, ref: "Account" },
   itemId: { type: mongoose.Schema.Types.ObjectId, ref: "Item" },
   amount: { type: Number, required: true },
-  type: { type: String, enum: ["income", "expense"], required: true },
+  type: { type: String, enum: ["income", "expense", "transfer"], required: true },
   description: { type: String },
   date: { type: Date, required: true },
 }, {

@@ -22,7 +22,8 @@ import {
   Tag,
   Crown,
   Lock,
-  Settings2
+  Settings2,
+  Wallet
 } from "lucide-react"
 import { RecentTransactions } from "./RecentTransactions"
 import { InitialSetup } from "./InitialSetup"
@@ -103,7 +104,7 @@ export function Dashboard() {
   const { isPro, showUpgradeModal } = useSubscription()
   const [filter, setFilter] = useState("month")
   const [isAdding, setIsAdding] = useState(false)
-  const [addType, setAddType] = useState<"income" | "expense">("expense")
+  const [addType, setAddType] = useState<"income" | "expense" | "transfer">("expense")
   const [viewType, setViewType] = useState<"income" | "expense">("expense")
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -294,7 +295,7 @@ export function Dashboard() {
         </div>
 
         {/* Daily Tracking Banners */}
-        {accounts.filter((a: any) => a.type === "regular billing").map((acc: any) => {
+        {accounts.filter((a: any) => a.type === "regular billing" && a.isFeatured).map((acc: any) => {
           const accountLogs = dailyLogs?.filter((l: any) => l.accountId === acc.id) || []
           const todayLog = accountLogs.find((l: any) => l.date && l.date.split("T")[0] === todayStr)
           
@@ -434,6 +435,25 @@ export function Dashboard() {
                 <ArrowUpRight className="h-4 w-4" />
               </div>
               <span className="font-black text-lg">Add Spent</span>
+            </Button>
+            <Button
+              onClick={() => {
+                const standardAccounts = accounts.filter((a: any) => a.type !== "regular billing");
+                if (standardAccounts.length < 2) {
+                  toast({
+                    title: "Unable to transfer",
+                    description: "You need more than one standard account to transfer funds.",
+                    className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
+                  });
+                  return;
+                }
+                setAddType("transfer");
+                setIsAdding(true);
+              }}
+              className="w-16 h-16 rounded-3xl bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center shadow-xl shadow-blue-600/20"
+              title="Transfer Funds"
+            >
+              <Wallet className="h-6 w-6" />
             </Button>
           </div>
         </div>

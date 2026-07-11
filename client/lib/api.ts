@@ -166,9 +166,10 @@ class ApiClient {
 
   async createTransaction(transaction: {
     amount: number
-    type: "income" | "expense"
-    categoryId: string
-    accountId?: string
+    type: "income" | "expense" | "transfer"
+    categoryId?: string | null
+    accountId?: string | null
+    toAccountId?: string | null
     itemId?: string
     description?: string
     date: string
@@ -183,9 +184,10 @@ class ApiClient {
     id: string,
     transaction: {
       amount: number
-      type: "income" | "expense"
-      categoryId: string
-      accountId?: string
+      type: "income" | "expense" | "transfer"
+      categoryId?: string | null
+      accountId?: string | null
+      toAccountId?: string | null
       itemId?: string
       description?: string
       date: string
@@ -304,6 +306,10 @@ class ApiClient {
     })
   }
 
+  async getSubscriptionHistory() {
+    return this.request("/subscription/history")
+  }
+
   // WebAuthn / Passkeys
   async getWebAuthnRegistrationOptions() {
     return this.request("/webauthn/generate-registration-options")
@@ -338,6 +344,27 @@ class ApiClient {
 
   async getWebAuthnStatus() {
     return this.request("/webauthn/status")
+  }
+
+  // Paddle
+  async createPaddleCheckout(priceId: string) {
+    return this.request("/paddle/create-checkout", {
+      method: "POST",
+      body: JSON.stringify({ priceId }),
+    })
+  }
+
+  async createPaddlePortal() {
+    return this.request("/paddle/create-portal", {
+      method: "POST",
+    })
+  }
+
+  async verifyPaddleTransaction(ptxn: string) {
+    return this.request("/paddle/verify-transaction", {
+      method: "POST",
+      body: JSON.stringify({ ptxn }),
+    })
   }
 
   // Daily Tracking Logs

@@ -11,6 +11,7 @@ interface User {
   plan: "free" | "pro"
   planActivatedAt: string | null
   planExpiresAt: string | null
+  avatarUrl?: string
   theme: "light" | "dark"
 }
 
@@ -35,6 +36,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Register global unauthorized handler
+    // Check for token in URL (e.g., after mobile app redirect)
+    const urlToken = new URLSearchParams(window.location.search).get("token");
+    if (urlToken && !localStorage.getItem("token")) {
+      localStorage.setItem("token", urlToken);
+      setToken(urlToken);
+    }
     api.setUnauthorizedHandler(() => {
       logout()
     })

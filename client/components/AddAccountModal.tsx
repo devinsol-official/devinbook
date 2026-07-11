@@ -77,7 +77,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px] rounded-[32px] overflow-hidden border-none shadow-2xl">
+            <DialogContent className="sm:max-w-[425px] rounded-[32px] overflow-y-auto max-h-[90vh] border-none shadow-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-black">Add Account</DialogTitle>
                 </DialogHeader>

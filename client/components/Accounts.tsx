@@ -8,6 +8,7 @@ import { SwipeableTransactionItem } from "./SwipeableTransactionItem"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { AddTransaction } from "./AddTransaction"
 import { AddAccountModal } from "./AddAccountModal"
 import { EditAccountModal } from "./EditAccountModal"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer"
@@ -62,7 +63,9 @@ export function Accounts() {
     const [dailySettings, setDailySettings] = useState<any>(null)
     const [isDailyLogModalOpen, setIsDailyLogModalOpen] = useState(false)
     const [selectedDateForLog, setSelectedDateForLog] = useState("")
-    const [selectedLogForEditing, setSelectedLogForEditing] = useState<any>(null)
+    const [selectedLogForEditing, setSelectedLogForEditing] = useState<any | null>(null)
+    const [isAddingTransaction, setIsAddingTransaction] = useState(false)
+    const [addTransactionType, setAddTransactionType] = useState<"income" | "expense" | "transfer">("expense")
     const [activeTab, setActiveTab] = useState<"standard" | "regular">("standard")
 
     // For Record Payment
@@ -260,6 +263,25 @@ export function Accounts() {
         </div>
     )
 
+    if (isAddingTransaction) {
+        return (
+            <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
+                <AddTransaction
+                    onBack={() => setIsAddingTransaction(false)}
+                    onSuccess={() => {
+                        setIsAddingTransaction(false)
+                        loadAccounts()
+                        if (selectedAccountForDetails) {
+                            loadAccountTransactions(selectedAccountForDetails.id)
+                        }
+                    }}
+                    initialType={addTransactionType}
+                    initialAccountId={selectedAccountForDetails?.id}
+                />
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-12 pb-20">
             <div className="flex items-center justify-between px-2">
@@ -335,31 +357,54 @@ export function Accounts() {
                         )
                     }
 
-                    return filteredAccounts.map((account) => (
-                        <SwipeableTransactionItem
-                            key={account.id}
-                            onDelete={() => handleDeleteAccount(account)}
-                            onEdit={() => {
-                                if (!isPro) {
-                                    showUpgradeModal("Account Management")
-                                    return
-                                }
-                                setEditingAccount(account)
-                            }}
-                            onClick={() => {
-                                setSelectedAccountForDetails(account)
-                                loadAccountTransactions(account.id)
-                                if (account.type === "regular billing") {
-                                    loadDailyLogs(account.id, currentMonth)
-                                }
-                            }}
-                            canDelete={!account.isDefault}
-                        >
-                            <AccountItem
-                                account={account}
-                            />
-                        </SwipeableTransactionItem>
-                    ))
+                    const renderAccountList = (list: any[], title: string) => {
+                        if (list.length === 0) return null;
+                        return (
+                            <div className="space-y-3 mb-6">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-2">{title}</h3>
+                                {list.map((account) => (
+                                    <SwipeableTransactionItem
+                                        key={account.id}
+                                        onDelete={() => handleDeleteAccount(account)}
+                                        onEdit={() => {
+                                            if (!isPro) {
+                                                showUpgradeModal("Account Management")
+                                                return
+                                            }
+                                            setEditingAccount(account)
+                                        }}
+                                        onClick={() => {
+                                            setSelectedAccountForDetails(account)
+                                            if (account.type === "regular billing") {
+                                                loadDailyLogs(account.id, currentMonth)
+                                            } else {
+                                                loadAccountTransactions(account.id)
+                                            }
+                                        }}
+                                        canDelete={!account.isDefault}
+                                    >
+                                        <AccountItem account={account} />
+                                    </SwipeableTransactionItem>
+                                ))}
+                            </div>
+                        );
+                    };
+
+                    if (activeTab === "regular") {
+                        return renderAccountList(filteredAccounts, "Regular Billing");
+                    }
+
+                    const cashBank = filteredAccounts.filter(a => a.type === "cash" || a.type === "bank");
+                    const persons = filteredAccounts.filter(a => a.type === "person");
+                    const others = filteredAccounts.filter(a => a.type !== "cash" && a.type !== "bank" && a.type !== "person");
+
+                    return (
+                        <>
+                            {renderAccountList(cashBank, "Cash & Bank")}
+                            {renderAccountList(persons, "Persons")}
+                            {renderAccountList(others, "Other Accounts")}
+                        </>
+                    )
                 })()}
             </div>
 
@@ -549,7 +594,45 @@ export function Accounts() {
                                 </>
                             ) : (
                                 <>
-                                    <div className="flex items-center gap-3 px-8 my-4">
+                                    <div className="grid grid-cols-3 gap-3 px-8 my-4">
+                                        <Button
+                                            onClick={() => {
+                                                setAddTransactionType("expense")
+                                                setIsAddingTransaction(true)
+                                            }}
+                                            className="h-12 rounded-2xl font-black bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20"
+                                        >
+                                            Expense
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                setAddTransactionType("income")
+                                                setIsAddingTransaction(true)
+                                            }}
+                                            className="h-12 rounded-2xl font-black bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                                        >
+                                            Income
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                const standardAccounts = accounts.filter(a => a.type !== "regular billing");
+                                                if (standardAccounts.length < 2) {
+                                                    toast({
+                                                        title: "Unable to transfer",
+                                                        description: "You need more than one standard account to transfer funds.",
+                                                        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
+                                                    });
+                                                    return;
+                                                }
+                                                setAddTransactionType("transfer")
+                                                setIsAddingTransaction(true)
+                                            }}
+                                            className="h-12 rounded-2xl font-black bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                                        >
+                                            Transfer
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-8 mb-4">
                                         <Button
                                             onClick={() => handleDownloadCSV(selectedAccountForDetails)}
                                             className="flex-1 h-12 rounded-2xl font-black bg-primary/10 text-primary hover:bg-primary/20"

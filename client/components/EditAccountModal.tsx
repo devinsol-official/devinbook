@@ -80,7 +80,7 @@ export function EditAccountModal({ isOpen, onClose, onSuccess, account }: EditAc
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px] rounded-[32px] overflow-hidden border-none shadow-2xl">
+            <DialogContent className="sm:max-w-[425px] rounded-[32px] overflow-y-auto max-h-[90vh] border-none shadow-2xl">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-black">Edit Account</DialogTitle>
                 </DialogHeader>

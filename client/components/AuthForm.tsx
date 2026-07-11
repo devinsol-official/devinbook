@@ -292,7 +292,7 @@ export function AuthForm() {
               </div>
               <div className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all cursor-pointer" onClick={() => window.open('https://devinsol.com', '_blank')}>
                 <img src="https://devinsol.com/wp-content/uploads/2025/07/devinsol-favicon.png" alt="Devinsol Icon" className="w-5 h-5 object-contain" />
-                <img src="https://devinsol.com/wp-content/uploads/2025/08/Devinsol-e1754743293456.png" alt="Devinsol Logo" className="h-4 object-contain" />
+                <img src="https://devinsol.com/wp-content/uploads/2025/08/Devinsol-e1754743293456.png" alt="Devinsol Logo" className="h-4 object-contain dark:invert opacity-90" />
               </div>
               <div className="space-y-1 text-center">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Designed by Devinsol</p>

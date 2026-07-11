@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
   plan: { type: String, enum: ["free", "pro"], default: "free" },
   planActivatedAt: { type: Date, default: null },
   planExpiresAt: { type: Date, default: null },
+  paddleCustomerId: { type: String, unique: true, sparse: true },
+  paddleSubscriptionId: { type: String, unique: true, sparse: true },
   theme: { type: String, enum: ["light", "dark"], default: "light" },
   currentChallenge: { type: String },
   whatsappNumber: { type: String, unique: true, sparse: true },

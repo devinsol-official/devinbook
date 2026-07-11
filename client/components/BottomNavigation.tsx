@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Receipt, Settings, LayoutGrid } from "lucide-react"
+import { Home, Receipt, LayoutGrid } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
@@ -13,7 +13,8 @@ export function BottomNavigation() {
     { id: "dashboard", label: "Home", icon: Home, href: "/dashboard" },
     { id: "transactions", label: "Transactions", icon: Receipt, href: "/transactions" },
     { id: "manage", label: "Manage", icon: LayoutGrid, href: "/manage" },
-    { id: "profile", label: "Settings", isLogo: true, icon: "https://devinsol.com/wp-content/uploads/2025/07/devinsol-favicon.png", href: "/profile" },
+    // Profile tab will show the user's avatar if logged in
+    { id: "profile", label: "Profile", isLogo: true, icon: user?.avatarUrl || "https://devinsol.com/wp-content/uploads/2025/07/devinsol-favicon.png", href: "/profile" },
   ]
 
   // Hide navigation if user is not logged in or on the landing page

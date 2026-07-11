@@ -18,20 +18,6 @@ const getOrCreateDefaultCategory = async (userId) => {
   return cat._id;
 };
 
-// Helper: Ensure a default "Milk Guy" account exists if none are configured
-const getOrCreateDefaultAccount = async (userId) => {
-  let acc = await Account.findOne({ userId, type: "regular billing" });
-  if (!acc) {
-    acc = await Account.create({
-      userId,
-      name: "Milk Guy",
-      type: "regular billing",
-      isDefault: false
-    });
-  }
-  return acc._id;
-};
-
 // GET /api/daily-logs
 exports.getDailyLogs = async (req, res) => {
   try {
@@ -203,20 +189,13 @@ exports.getDailySettings = async (req, res) => {
 
     let settings = dbUser.dailySettings;
     
-    // Build default templates if settings are unconfigured
-    if (!settings || !settings.accountId) {
-      const defaultAccountId = await getOrCreateDefaultAccount(userId);
+    // Build default category if missing, but DO NOT auto-create regular billing accounts.
+    if (!settings) {
       const defaultCategoryId = await getOrCreateDefaultCategory(userId);
-      
-      const defaultItems = [
-        { name: "Milk", quantity: 2, unit: "kg", pricePerUnit: 150 },
-        { name: "Yogurt", quantity: 0.5, unit: "kg", pricePerUnit: 200 }
-      ];
-
       dbUser.dailySettings = {
-        accountId: defaultAccountId,
         categoryId: defaultCategoryId,
-        defaultItems
+        accountId: null,
+        defaultItems: []
       };
       await dbUser.save();
       settings = dbUser.dailySettings;

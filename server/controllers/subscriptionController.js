@@ -91,3 +91,12 @@ exports.applyCoupon = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+exports.getSubscriptionHistory = async (req, res) => {
+    try {
+        const logs = await SubscriptionLog.find({ user: req.user._id }).sort({ createdAt: -1 });
+        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};

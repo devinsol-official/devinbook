@@ -3,6 +3,7 @@
 import type React from "react"
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react"
 import { useAuth } from "./AuthContext"
+import { useRouter } from "next/navigation"
 
 interface SubscriptionContextType {
   isPro: boolean
@@ -20,6 +21,7 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
+  const router = useRouter()
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [upgradeFeatureName, setUpgradeFeatureName] = useState<string | undefined>(undefined)
 
@@ -47,9 +49,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     : null
 
   const showUpgradeModal = useCallback((featureName?: string) => {
-    setUpgradeFeatureName(featureName)
-    setUpgradeModalOpen(true)
-  }, [])
+    // Instead of showing the modal, navigate directly to the pricing page
+    router.push("/pricing")
+  }, [router])
 
   const hideUpgradeModal = useCallback(() => {
     setUpgradeModalOpen(false)

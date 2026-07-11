@@ -1,13 +1,15 @@
 const Transaction = require("../models/Transaction");
+const Account = require("../models/Account");
 const mongoose = require("mongoose");
 
 // Utility: Sum amounts by date and type
-const getSumByDate = async (userId, startDate) => {
+const getSumByDate = async (userId, startDate, excludeAccountIds) => {
     const data = await Transaction.aggregate([
         {
             $match: {
                 userId: new mongoose.Types.ObjectId(userId),
                 date: { $gte: startDate },
+                accountId: { $nin: excludeAccountIds }
             },
         },
         {
@@ -37,16 +39,25 @@ const getStats = async (req, res) => {
         const userId = req.user._id;
         const now = new Date();
 
+        // 1. Fetch all regular billing accounts to exclude their transactions
+        const regularAccounts = await Account.find({ userId, type: "regular billing" }).select("_id");
+        const excludeAccountIds = regularAccounts.map(a => new mongoose.Types.ObjectId(a._id));
+
         const startOfDay = new Date(now.setHours(0, 0, 0, 0));
         const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
         const [daily, weekly, monthly, monthWise] = await Promise.all([
-            getSumByDate(userId, startOfDay),
-            getSumByDate(userId, startOfWeek),
-            getSumByDate(userId, startOfMonth),
+            getSumByDate(userId, startOfDay, excludeAccountIds),
+            getSumByDate(userId, startOfWeek, excludeAccountIds),
+            getSumByDate(userId, startOfMonth, excludeAccountIds),
             Transaction.aggregate([
-                { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+                { 
+                    $match: { 
+                        userId: new mongoose.Types.ObjectId(userId),
+                        accountId: { $nin: excludeAccountIds } 
+                    } 
+                },
                 {
                     $group: {
                         _id: { month: { $month: "$date" }, year: { $year: "$date" } },

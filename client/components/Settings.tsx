@@ -25,7 +25,9 @@ import {
   Eye,
   EyeOff,
   Plus,
-  Lock
+  Lock,
+  CreditCard,
+  ArrowRight,
 } from "lucide-react"
 import {
   AlertDialog,
@@ -49,6 +51,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import packageInfo from "../package.json"
+import { usePaddleCheckout } from "@/hooks/usePaddleCheckout"
 
 export function Settings() {
   const { user, logout, updateUser } = useAuth()
@@ -56,6 +59,7 @@ export function Settings() {
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
   const router = useRouter()
+  const { openCheckout, openBillingPortal, isLoading } = usePaddleCheckout()
 
   const [couponCode, setCouponCode] = useState("")
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
@@ -66,6 +70,20 @@ export function Settings() {
   const [shortcutStep, setShortcutStep] = useState(1)
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [apiUrl, setApiUrl] = useState("")
+
+  const handleUpgradeClick = () => {
+    if (isPro) {
+      openBillingPortal();
+    } else {
+      openCheckout({
+        priceId: process.env.NEXT_PUBLIC_PADDLE_PRO_PRICE_ID || "",
+        onSuccess: () => {
+          toast({ title: "Success!", description: "Subscription activated. Page will refresh." });
+          setTimeout(() => window.location.reload(), 2000);
+        }
+      });
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -183,7 +201,7 @@ export function Settings() {
   }
 
   const menuItems = [
-    { icon: <CircleHelp className="h-5 w-5 text-orange-500" />, label: "Help Center", value: null, href: "https://devinsol.com/contact-us/" },
+    { icon: <CircleHelp className="h-5 w-5 text-orange-500" />, label: "Help Center", value: null, onClick: () => showUpgradeModal() },
     { icon: <Info className="h-5 w-5 text-slate-500" />, label: "About App", value: `v${packageInfo.version}`, href: "https://devinbook.devinsol.com" },
   ]
 
@@ -255,6 +273,16 @@ export function Settings() {
                 Active
               </span>
             )}
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <Button
+              variant="outline"
+              onClick={(e) => { e.stopPropagation(); router.push('/account'); }}
+              className="w-full h-10 rounded-xl text-xs font-bold bg-background hover:bg-muted"
+            >
+              Manage Account & Billing History
+            </Button>
           </div>
 
           {/* Days remaining bar — only for Pro users */}
@@ -350,7 +378,7 @@ export function Settings() {
           {menuItems.map((item, idx) => (
             <div 
               key={idx} 
-              onClick={() => item.href ? window.open(item.href, '_blank') : null}
+              onClick={() => item.onClick ? item.onClick() : item.href ? window.open(item.href, '_blank') : null}
               className={`p-6 flex items-center justify-between hover:bg-muted/30 cursor-pointer transition-colors ${idx !== menuItems.length - 1 ? 'border-b' : ''}`}
             >
               <div className="flex items-center gap-4">
@@ -786,7 +814,7 @@ export function Settings() {
       <div className="flex flex-col items-center justify-center gap-3 pt-4 pb-12 opacity-60">
         <div className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all cursor-pointer" onClick={() => window.open('https://devinsol.com', '_blank')}>
           <img src="https://devinsol.com/wp-content/uploads/2025/07/devinsol-favicon.png" alt="Devinsol Icon" className="w-5 h-5 object-contain" />
-          <img src="https://devinsol.com/wp-content/uploads/2025/08/Devinsol-e1754743293456.png" alt="Devinsol Logo" className="h-4 object-contain" />
+          <img src="https://devinsol.com/wp-content/uploads/2025/08/Devinsol-e1754743293456.png" alt="Devinsol Logo" className="h-4 object-contain dark:invert opacity-90" />
         </div>
         <div className="space-y-1 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Designed by Devinsol</p>
