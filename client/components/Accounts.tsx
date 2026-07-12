@@ -132,7 +132,7 @@ export function Accounts() {
                 categoryId: catId,
                 accountId,
                 description: `Payment Settlement - ${format(new Date(), "MMMM yyyy")}`,
-                date: new Date().toISOString().split("T")[0]
+                date: format(new Date(), "yyyy-MM-dd")
             })
             toast({ title: "Success", description: "Payment recorded successfully" })
             setIsPaymentModalOpen(false)
@@ -520,10 +520,10 @@ export function Accounts() {
                                                 <div className="space-y-2.5">
                                                     {(() => {
                                                         const days = getDaysInMonth(currentMonth)
-                                                        const todayStr = new Date().toISOString().split("T")[0]
+                                                        const todayStr = format(new Date(), "yyyy-MM-dd")
                                                         
                                                         return days.map(day => {
-                                                            const dateStr = day.toISOString().split("T")[0]
+                                                            const dateStr = format(day, "yyyy-MM-dd")
                                                             const log = dailyLogs.find(l => l.date && l.date.split("T")[0] === dateStr)
                                                             const isFuture = dateStr > todayStr
                                                             const isToday = dateStr === todayStr

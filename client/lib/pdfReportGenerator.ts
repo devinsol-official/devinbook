@@ -1,5 +1,6 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { format } from "date-fns"
 
 interface ReportStats {
   income: number
@@ -340,10 +341,10 @@ export const generateDailyDeliveriesReport = async (
   doc.setLineWidth(0.3)
   doc.line(14, tableStartY + 1, W - 14, tableStartY + 1)
 
-  const todayStr = new Date().toISOString().split("T")[0]
+  const todayStr = format(new Date(), "yyyy-MM-dd")
 
   const tableData = daysInMonth.map(day => {
-    const dStr = day.toISOString().split("T")[0]
+    const dStr = format(day, "yyyy-MM-dd")
     const isFuture = dStr > todayStr
     const log = dailyLogs.find(l => l.date && l.date.split("T")[0] === dStr)
     const dateFormatted = day.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })

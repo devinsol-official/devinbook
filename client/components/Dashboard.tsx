@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { format } from "date-fns"
 import useSWR from "swr"
 import dynamic from "next/dynamic"
 import { useAuth } from "@/contexts/AuthContext"
@@ -75,10 +76,10 @@ export function Dashboard() {
   const [selectedLogForEditing, setSelectedLogForEditing] = useState<any>(null)
 
   // Use current local date formatted as YYYY-MM
-  const currentMonthStr = new Date().toISOString().split("T")[0].substring(0, 7)
+  const currentMonthStr = format(new Date(), "yyyy-MM")
   const { data: dailyLogs, mutate: mutateDailyLogs } = useSWR(`daily-logs-${currentMonthStr}`, () => api.getDailyLogs(undefined, currentMonthStr))
 
-  const todayStr = new Date().toISOString().split("T")[0]
+  const todayStr = format(new Date(), "yyyy-MM-dd")
 
   const handleQuickLog = async (acc: any) => {
     if (!acc.defaultItems || acc.defaultItems.length === 0) {
