@@ -56,7 +56,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
   const [amount, setAmount] = useState("")
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
+  const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(new Set())
   const [toAccountId, setToAccountId] = useState<string | null>(null)
   const [description, setDescription] = useState("")
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
@@ -94,10 +94,10 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
   }, [isTransfer, accounts, onBack, toast])
 
   useEffect(() => {
-    if (isTransfer && toAccountId === selectedAccountId) {
+    if (isTransfer && toAccountId && selectedAccountIds.has(toAccountId)) {
       setToAccountId(null)
     }
-  }, [selectedAccountId, isTransfer])
+  }, [selectedAccountIds, isTransfer])
 
   useEffect(() => {
     let filtered = categories.filter(c => c.type === initialType)
@@ -118,11 +118,11 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
 
       const defaultAcc = accountsData.find((a: Account) => a.isDefault)
       if (initialAccountId) {
-        setSelectedAccountId(initialAccountId)
+        setSelectedAccountIds(new Set([initialAccountId]))
       } else if (defaultAcc) {
-        setSelectedAccountId(defaultAcc.id)
+        setSelectedAccountIds(new Set([defaultAcc.id]))
       } else if (accountsData.length > 0) {
-        setSelectedAccountId(accountsData[0].id)
+        setSelectedAccountIds(new Set([accountsData[0].id]))
       }
     } catch (error: any) {
       toast({
@@ -147,6 +147,18 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
     }
   }
 
+  const toggleAccountId = (id: string) => {
+    setSelectedAccountIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
   const handleSubmit = async () => {
     if (!amount || Number(amount) <= 0) {
       toast({
@@ -166,7 +178,16 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
       return
     }
 
-    if (isTransfer && (!selectedAccountId || !toAccountId)) {
+    if (!isTransfer && selectedAccountIds.size === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one account",
+        className: "bg-background border-2 border-red-500/20 text-foreground font-medium shadow-xl shadow-red-500/10",
+      })
+      return
+    }
+
+    if (isTransfer && (!toAccountId || selectedAccountIds.size === 0)) {
       toast({
         title: "Error",
         description: "Please select source and destination accounts",
@@ -175,7 +196,8 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
       return
     }
 
-    if (isTransfer && selectedAccountId === toAccountId) {
+    const fromAccountId = isTransfer ? [...selectedAccountIds][0] : null
+    if (isTransfer && fromAccountId === toAccountId) {
       toast({
         title: "Error",
         description: "Source and destination accounts must be different",
@@ -187,19 +209,26 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
     setLoading(true)
     try {
       const combinedDate = new Date(`${date}T${time}:00`)
-      await api.createTransaction({
-        amount: Number(amount),
-        categoryId: isTransfer ? undefined : selectedCategoryId,
-        accountId: selectedAccountId,
-        toAccountId: isTransfer ? toAccountId : undefined,
-        type: initialType,
-        description,
-        date: combinedDate.toISOString(),
-      })
+      const accountsList = isTransfer ? [fromAccountId!] : [...selectedAccountIds]
 
+      await Promise.all(
+        accountsList.map(accId =>
+          api.createTransaction({
+            amount: Number(amount),
+            categoryId: isTransfer ? undefined : selectedCategoryId,
+            accountId: accId,
+            toAccountId: isTransfer ? toAccountId : undefined,
+            type: initialType,
+            description,
+            date: combinedDate.toISOString(),
+          })
+        )
+      )
+
+      const count = accountsList.length
       toast({
         title: "Success",
-        description: "Added successfully",
+        description: count > 1 ? `Added to ${count} accounts successfully` : "Added successfully",
       })
       setIsAmountPopupOpen(false)
       onSuccess()
@@ -222,6 +251,7 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
     const d = new Date()
     setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`)
     setTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`)
+    // Keep existing account selection; user can adjust in drawer
   }
 
   const handleDateSelect = (d: Date | undefined) => {
@@ -350,33 +380,61 @@ export function AddTransaction({ onBack, onSuccess, initialType = "expense", ini
 
               {/* Account Selection */}
               <div className="space-y-3 pt-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">
-                  {isTransfer ? "From Account (Source)" : "Select Account"}
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {accounts.filter(a => a.type !== "regular billing").map((acc) => (
-                    <button
-                      key={acc.id}
-                      type="button"
-                      onClick={() => setSelectedAccountId(acc.id)}
-                      className={cn(
-                        "px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2",
-                        selectedAccountId === acc.id
-                          ? `${activeBorder} ${activeBgLight} ${activeText}`
-                          : "bg-muted/50 border-transparent text-muted-foreground"
-                      )}
-                    >
-                      {acc.name.toUpperCase()}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-center gap-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                    {isTransfer ? "From Account (Source)" : "Select Account(s)"}
+                  </p>
+                  {!isTransfer && selectedAccountIds.size > 1 && (
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${activeColor} text-white`}>
+                      {selectedAccountIds.size}
+                    </span>
+                  )}
                 </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {accounts.filter(a => a.type !== "regular billing").map((acc) => {
+                    const isSelected = isTransfer
+                      ? selectedAccountIds.has(acc.id) && selectedAccountIds.size === 1
+                      : selectedAccountIds.has(acc.id)
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => {
+                          if (isTransfer) {
+                            setSelectedAccountIds(new Set([acc.id]))
+                          } else {
+                            toggleAccountId(acc.id)
+                          }
+                        }}
+                        className={cn(
+                          "px-4 py-2 rounded-xl text-[10px] font-black transition-all border-2 relative",
+                          isSelected
+                            ? `${activeBorder} ${activeBgLight} ${activeText}`
+                            : "bg-muted/50 border-transparent text-muted-foreground"
+                        )}
+                      >
+                        {acc.name.toUpperCase()}
+                        {!isTransfer && isSelected && selectedAccountIds.size > 1 && (
+                          <span className={`absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full ${activeColor} flex items-center justify-center`}>
+                            <Check className="w-2 h-2 text-white" />
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                {!isTransfer && accounts.filter(a => a.type !== "regular billing").length > 1 && (
+                  <p className="text-[9px] text-muted-foreground/60 text-center font-medium">
+                    Tap multiple accounts to split this transaction
+                  </p>
+                )}
               </div>
 
               {isTransfer && (
                 <div className="space-y-3 pt-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-center">To Account (Destination)</p>
                   <div className="flex flex-wrap justify-center gap-2">
-                    {accounts.filter(a => a.type !== "regular billing" && a.id !== selectedAccountId).map((acc) => (
+                    {accounts.filter(a => a.type !== "regular billing" && !selectedAccountIds.has(a.id)).map((acc) => (
                       <button
                         key={`to-${acc.id}`}
                         type="button"
