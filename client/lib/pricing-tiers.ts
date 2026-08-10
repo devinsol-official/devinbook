@@ -1,4 +1,5 @@
 export interface Tier {
+  id: "standard" | "pro";
   name: "Standard" | "Pro";
   description: string;
   features: string[];
@@ -8,6 +9,7 @@ export interface Tier {
 
 export const PRICING_TIERS: Tier[] = [
   {
+    id: "standard",
     name: "Standard",
     description: "Perfect for getting your daily flow in order.",
     isFree: true,
@@ -20,6 +22,7 @@ export const PRICING_TIERS: Tier[] = [
     ]
   },
   {
+    id: "pro",
     name: "Pro",
     description: "Unlock your financial data's true potential.",
     features: [

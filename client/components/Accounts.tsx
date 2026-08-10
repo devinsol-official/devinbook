@@ -61,7 +61,7 @@ export function Accounts() {
 
     const [dailyLogs, setDailyLogs] = useState<any[]>([])
     const [loadingLogs, setLoadingLogs] = useState(false)
-    const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().substring(0, 7))
+    const [currentMonth, setCurrentMonth] = useState(format(new Date(), "yyyy-MM"))
     const [dailySettings, setDailySettings] = useState<any>(null)
     const [isDailyLogModalOpen, setIsDailyLogModalOpen] = useState(false)
     const [selectedDateForLog, setSelectedDateForLog] = useState("")
@@ -102,17 +102,25 @@ export function Accounts() {
     }
 
     const handlePrevMonth = (accountId: string) => {
-        const [year, month] = currentMonth.split("-").map(Number)
-        const prev = new Date(year, month - 2, 1)
-        const newMonth = prev.toISOString().substring(0, 7)
+        let [year, month] = currentMonth.split("-").map(Number)
+        month -= 1
+        if (month < 1) {
+            month = 12
+            year -= 1
+        }
+        const newMonth = `${year}-${String(month).padStart(2, "0")}`
         setCurrentMonth(newMonth)
         loadDailyLogs(accountId, newMonth)
     }
 
     const handleNextMonth = (accountId: string) => {
-        const [year, month] = currentMonth.split("-").map(Number)
-        const next = new Date(year, month, 1)
-        const newMonth = next.toISOString().substring(0, 7)
+        let [year, month] = currentMonth.split("-").map(Number)
+        month += 1
+        if (month > 12) {
+            month = 1
+            year += 1
+        }
+        const newMonth = `${year}-${String(month).padStart(2, "0")}`
         setCurrentMonth(newMonth)
         loadDailyLogs(accountId, newMonth)
     }
@@ -465,7 +473,10 @@ export function Accounts() {
                                                 <ChevronLeft className="h-4 w-4" />
                                             </Button>
                                             <span className="font-black text-xs uppercase tracking-wider text-primary">
-                                                {format(new Date(`${currentMonth}-02`), "MMMM yyyy")}
+                                                {(() => {
+                                                    const [y, m] = currentMonth.split("-").map(Number)
+                                                    return format(new Date(y, m - 1, 1), "MMMM yyyy")
+                                                })()}
                                             </span>
                                             <Button
                                                 variant="ghost"
