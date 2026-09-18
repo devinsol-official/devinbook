@@ -15,6 +15,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/mcp',
+        // Fallback to localhost:5000 if env var is missing
+        destination: process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/mcp` : 'http://localhost:5000/api/mcp',
+      }
+    ];
+  },
 };
 
 export default withPWA(nextConfig);

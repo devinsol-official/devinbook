@@ -73,6 +73,9 @@ app.use("/api/subscription", subscriptionRoutes);
 const paddleRoutes = require("./routes/paddleRoutes");
 app.use("/api/paddle", paddleRoutes);
 
+const mcpRoutes = require("./routes/mcpRoutes");
+app.use("/api/mcp", mcpRoutes);
+
 // ─── Midnight Cron: expire subscriptions every night at 00:00 ───────────────
 // Runs at 00:00 every night server time
 cron.schedule("0 0 * * *", async () => {

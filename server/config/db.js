@@ -21,7 +21,8 @@ const connectDB = async () => {
 
   if (!cached.promise) {
     const opts = {
-      // bufferCommands is true by default, allowing Mongoose to wait for connection
+      // Force IPv4 DNS resolution for SRV records (fixes querySrv ECONNREFUSED)
+      family: 4
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {

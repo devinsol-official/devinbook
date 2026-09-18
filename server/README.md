@@ -305,3 +305,41 @@ Returns a CSV or JSON file for reporting.
 * Passwords are hashed with **bcrypt**
 * Authentication is handled using **JWT**
 * All user-specific data is **scoped by user ID**
+
+---
+
+## 🤖 MCP Server Integration
+
+DevinBook includes a built-in **Model Context Protocol (MCP)** server that allows AI assistants (like Claude) to directly interact with your expense data.
+
+### Connection Details
+* **Server URL:** `http://localhost:5000/api/mcp` (or your production URL `https://.../api/mcp`)
+* **Authentication:** The MCP server requires a Bearer token. You must use your account's `apiKey` as the token.
+
+### How to Connect in Claude Desktop
+1. Open Claude Desktop settings.
+2. Go to the **Developer** section and click **Edit config**.
+3. Add the following to your `mcp.json` file, replacing `<YOUR_API_KEY>` with your actual DevinBook API key (found in your account settings or database):
+
+```json
+{
+  "mcpServers": {
+    "devinbook": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/proxy", "http://localhost:5000/api/mcp"],
+      "env": {
+        "AUTHORIZATION": "Bearer <YOUR_API_KEY>"
+      }
+    }
+  }
+}
+```
+*(Note: Since the server uses a standard HTTP endpoint, you might need an HTTP-to-stdio proxy or configure it according to Claude's latest remote server documentation).*
+
+### Available AI Tools
+* `list_categories`: View your income/expense categories.
+* `list_transactions`: Query transactions with flexible filters (dates, amounts, keywords).
+* `get_expense_totals`: Get aggregated totals for specific time periods.
+* `get_account_summary`: View an overall snapshot of your finances.
+* `add_transaction`: Log a new expense or income.
+* `create_category`: Add a new category.
