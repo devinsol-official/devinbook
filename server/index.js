@@ -18,6 +18,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const accountRoutes = require("./routes/accountRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const webauthnRoutes = require("./routes/webauthnRoutes");
+const oauthRoutes = require("./routes/oauthRoutes");
 
 const app = express();
 app.use(compression());
@@ -57,6 +58,12 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/webauthn", webauthnRoutes);
+app.use("/api/oauth", oauthRoutes);
+
+// For standard OAuth discovery, it must be at the root /.well-known
+app.use("/.well-known/oauth-authorization-server", (req, res) => {
+  res.redirect("/api/oauth/.well-known/oauth-authorization-server");
+});
 
 const dailyLogRoutes = require("./routes/dailyLogRoutes");
 app.use("/api/daily-logs", dailyLogRoutes);
