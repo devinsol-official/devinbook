@@ -64,7 +64,7 @@ const openCors = cors({ origin: "*" });
 app.use("/api/oauth", openCors, oauthRoutes);
 
 // For standard OAuth discovery, it must be at the root /.well-known
-app.get("/.well-known/oauth-authorization-server", openCors, (req, res) => {
+const oauthMetadataHandler = (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const host = req.headers['x-forwarded-host'] || req.get("host");
   const baseUrl = `${protocol}://${host}`;
@@ -79,7 +79,10 @@ app.get("/.well-known/oauth-authorization-server", openCors, (req, res) => {
     token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic"],
     code_challenge_methods_supported: ["S256"],
   });
-});
+};
+
+app.get("/.well-known/oauth-authorization-server", openCors, oauthMetadataHandler);
+app.get("/api/mcp/.well-known/oauth-authorization-server", openCors, oauthMetadataHandler);
 
 const dailyLogRoutes = require("./routes/dailyLogRoutes");
 app.use("/api/daily-logs", dailyLogRoutes);
