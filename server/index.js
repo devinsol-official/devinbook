@@ -61,8 +61,21 @@ app.use("/api/webauthn", webauthnRoutes);
 app.use("/api/oauth", oauthRoutes);
 
 // For standard OAuth discovery, it must be at the root /.well-known
-app.use("/.well-known/oauth-authorization-server", (req, res) => {
-  res.redirect("/api/oauth/.well-known/oauth-authorization-server");
+app.get("/.well-known/oauth-authorization-server", (req, res) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.headers['x-forwarded-host'] || req.get("host");
+  const baseUrl = `${protocol}://${host}`;
+  res.json({
+    issuer: baseUrl,
+    authorization_endpoint: `${baseUrl}/api/oauth/authorize`,
+    token_endpoint: `${baseUrl}/api/oauth/token`,
+    registration_endpoint: `${baseUrl}/api/oauth/register`,
+    scopes_supported: ["read", "write"],
+    response_types_supported: ["code"],
+    grant_types_supported: ["authorization_code"],
+    token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic"],
+    code_challenge_methods_supported: ["S256"],
+  });
 });
 
 const dailyLogRoutes = require("./routes/dailyLogRoutes");

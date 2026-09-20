@@ -9,7 +9,9 @@ const router = express.Router();
 
 // 1. Metadata discovery
 router.get("/.well-known/oauth-authorization-server", (req, res) => {
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.headers['x-forwarded-host'] || req.get("host");
+  const baseUrl = `${protocol}://${host}`;
   res.json({
     issuer: baseUrl,
     authorization_endpoint: `${baseUrl}/api/oauth/authorize`,
