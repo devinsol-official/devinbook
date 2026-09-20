@@ -45,6 +45,7 @@ router.post("/register", async (req, res) => {
       client_id: newClient.clientId,
       client_secret: newClient.clientSecret,
       client_id_issued_at: Math.floor(newClient.createdAt.getTime() / 1000),
+      client_secret_expires_at: 0,
       client_name: newClient.clientName,
       redirect_uris: newClient.redirectUris,
       grant_types: ["authorization_code"],

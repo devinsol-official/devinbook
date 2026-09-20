@@ -58,10 +58,13 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/webauthn", webauthnRoutes);
-app.use("/api/oauth", oauthRoutes);
+
+// Open CORS for OAuth so Claude can access it from anywhere
+const openCors = cors({ origin: "*" });
+app.use("/api/oauth", openCors, oauthRoutes);
 
 // For standard OAuth discovery, it must be at the root /.well-known
-app.get("/.well-known/oauth-authorization-server", (req, res) => {
+app.get("/.well-known/oauth-authorization-server", openCors, (req, res) => {
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const host = req.headers['x-forwarded-host'] || req.get("host");
   const baseUrl = `${protocol}://${host}`;
