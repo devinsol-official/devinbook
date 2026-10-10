@@ -2,12 +2,12 @@
 
 import { AuthForm } from "@/components/AuthForm"
 import { useTheme } from "next-themes"
-import { useEffect } from "react"
+import { Suspense, useEffect } from "react"
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
 
-export default function LoginPage() {
+function LoginPageContent() {
     const { setTheme } = useTheme()
     const { user, loading } = useAuth()
     const router = useRouter()
@@ -58,4 +58,12 @@ export default function LoginPage() {
     if (loading) return null
 
     return <AuthForm isOauth={isOauth} />
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginPageContent />
+        </Suspense>
+    )
 }
