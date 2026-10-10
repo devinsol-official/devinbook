@@ -19,7 +19,7 @@ const nextConfig = {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     // If the API URL already ends with /api, we might need to strip it to get the raw domain for .well-known
     // But since the backend serves /.well-known, we should point there.
-    const backendHost = apiBase.endsWith('/api') ? apiBase.replace('/api', '') : apiBase;
+    const backendHost = apiBase.endsWith('/api') ? apiBase.replace(/\/api$/, '') : apiBase;
 
     return [
       {
