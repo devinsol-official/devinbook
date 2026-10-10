@@ -15,7 +15,7 @@ import { useTheme } from "next-themes"
 import { api } from "@/lib/api"
 import { startAuthentication } from "@simplewebauthn/browser"
 
-export function AuthForm() {
+export function AuthForm({ isOauth }: { isOauth?: boolean }) {
   const router = useRouter()
   const [isLogin, setIsLogin] = useState(true)
   const [isForgot, setIsForgot] = useState(false)
@@ -56,14 +56,18 @@ export function AuthForm() {
           title: "Welcome back!",
           description: "Accessing your financial dashboard...",
         })
-        router.push("/dashboard")
+        if (!isOauth) {
+          router.push("/dashboard")
+        }
       } else {
         await register(name, email, password)
         toast({
           title: "Account created!",
           description: "Your journey to financial freedom starts now.",
         })
-        router.push("/dashboard")
+        if (!isOauth) {
+          router.push("/dashboard")
+        }
       }
     } catch (error) {
       toast({
@@ -91,8 +95,10 @@ export function AuthForm() {
       if (verification.verified && verification.token && verification.user) {
         localStorage.setItem("token", verification.token)
         localStorage.setItem("user", JSON.stringify(verification.user))
-        // Force page reload to update context
-        window.location.href = "/dashboard"
+        if (!isOauth) {
+          // Force page reload to update context
+          window.location.href = "/dashboard"
+        }
       } else {
         throw new Error("Verification failed")
       }
@@ -291,7 +297,7 @@ export function AuthForm() {
               <div className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all cursor-pointer transform hover:scale-105 duration-300" onClick={() => window.open('https://devinsol.com', '_blank')}>
               </div>
               <div className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all cursor-pointer" onClick={() => window.open('https://devinsol.com', '_blank')}>
-                <img src="https://devinsol.com/wp-content/uploads/2025/07/devinsol-favicon.png" alt="Devinsol Icon" className="w-5 h-5 object-contain" />
+                <img src="https://www.devinsol.com/images/logo@2x.webp" alt="Devinsol Icon" className="w-5 h-5 object-contain" />
                 <img src="https://devinsol.com/wp-content/uploads/2025/08/Devinsol-e1754743293456.png" alt="Devinsol Logo" className="h-4 object-contain dark:invert opacity-90" />
               </div>
               <div className="space-y-1 text-center">

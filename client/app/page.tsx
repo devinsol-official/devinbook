@@ -717,7 +717,7 @@ export default function LandingPage() {
             </span>
             <div className="w-5 h-5 relative flex items-center justify-center grayscale group-hover:grayscale-0 transition-all duration-500">
               <img
-                src="https://devinsol.com/wp-content/uploads/2025/07/devinsol-favicon.png"
+                src="https://www.devinsol.com/images/logo@2x.webp"
                 alt="Devinsol"
                 className="w-4 h-4 object-contain"
               />

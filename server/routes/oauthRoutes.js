@@ -66,65 +66,45 @@ router.get("/authorize", async (req, res) => {
     return res.status(400).send("Missing client_id or redirect_uri");
   }
 
-  // A simple HTML form to log in
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Authorize Access</title>
-      <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f9fafb; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { margin-top: 0; color: #111827; }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; margin-bottom: 0.5rem; color: #374151; font-weight: 500; }
-        input { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 0.75rem; background: #2563eb; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #1d4ed8; }
-        .error { color: #dc2626; margin-bottom: 1rem; font-size: 0.875rem; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <h2>Connect with Devinbook</h2>
-        <p style="color: #6b7280; font-size: 0.875rem; margin-bottom: 1.5rem;">Log in to authorize this application to connect to your account.</p>
-        ${req.query.error ? '<div class="error">Invalid email or password</div>' : ''}
-        <form method="POST" action="/api/oauth/authorize">
-          <input type="hidden" name="client_id" value="${client_id}">
-          <input type="hidden" name="redirect_uri" value="${redirect_uri}">
-          <input type="hidden" name="state" value="${state || ''}">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" required placeholder="you@example.com">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" name="password" required>
-          </div>
-          <button type="submit">Log In & Authorize</button>
-        </form>
-      </div>
-    </body>
-    </html>
-  `);
+  // Redirect to frontend login page
+  const clientUrl = process.env.CLIENT_URL || `http://localhost:3000`;
+  const frontendUrl = new URL(`${clientUrl}/login`);
+  frontendUrl.searchParams.set("client_id", client_id);
+  frontendUrl.searchParams.set("redirect_uri", redirect_uri);
+  if (state) frontendUrl.searchParams.set("state", state);
+  
+  res.redirect(frontendUrl.toString());
 });
 
 // 4. Authorization Endpoint (Process Login & Generate Code)
 router.post("/authorize", async (req, res) => {
   const { email, password, client_id, redirect_uri, state } = req.body;
+  const token = req.headers.authorization?.split(" ")[1];
 
   try {
-    const user = await User.findOne({ email });
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      // Redirect back to login with error
-      const errUrl = new URL(`${req.protocol}://${req.get("host")}/api/oauth/authorize`);
-      errUrl.searchParams.set("client_id", client_id);
-      errUrl.searchParams.set("redirect_uri", redirect_uri);
-      if (state) errUrl.searchParams.set("state", state);
-      errUrl.searchParams.set("error", "invalid_credentials");
-      return res.redirect(errUrl.toString());
+    let user;
+    if (token) {
+      const jwt = require("jsonwebtoken");
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      user = await User.findById(decoded.id);
+      if (!user) {
+        return res.status(401).json({ error: "invalid_token" });
+      }
+    } else {
+      user = await User.findOne({ email });
+      if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+        // Return JSON error for api calls
+        if (req.headers.accept?.includes("application/json")) {
+           return res.status(401).json({ error: "invalid_credentials" });
+        }
+        // Redirect back to login with error
+        const errUrl = new URL(`${req.protocol}://${req.get("host")}/api/oauth/authorize`);
+        errUrl.searchParams.set("client_id", client_id);
+        errUrl.searchParams.set("redirect_uri", redirect_uri);
+        if (state) errUrl.searchParams.set("state", state);
+        errUrl.searchParams.set("error", "invalid_credentials");
+        return res.redirect(errUrl.toString());
+      }
     }
 
     // Ensure the user has an API key (generate if missing, though typically they have one)
@@ -149,6 +129,10 @@ router.post("/authorize", async (req, res) => {
     redirectUrl.searchParams.set("code", code);
     if (state) {
       redirectUrl.searchParams.set("state", state);
+    }
+
+    if (req.headers.accept?.includes("application/json") || token) {
+      return res.json({ redirect_url: redirectUrl.toString() });
     }
 
     res.redirect(redirectUrl.toString());

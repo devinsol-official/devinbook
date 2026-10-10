@@ -72,6 +72,14 @@ function createMcpServer(user) {
           },
         },
         {
+          name: "list_accounts",
+          description: "List the user's accounts.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
+        },
+        {
           name: "list_transactions",
           description: "List the user's transactions with flexible filters.",
           inputSchema: {
@@ -114,18 +122,19 @@ function createMcpServer(user) {
         },
         {
           name: "add_transaction",
-          description: "Add a new transaction. Deliberately requires category_id to force fetching categories first.",
+          description: "Add a new transaction. You MUST ask the user to select an account and a category FIRST by calling `list_accounts` and `list_categories`. Present the options to the user. Wait for their selection before calling `add_transaction`.",
           inputSchema: {
             type: "object",
             properties: {
               amount: { type: "number", minimum: 0 },
               type: { type: "string", enum: ["expense", "income"], default: "expense" },
               category_id: { type: "string" },
+              account_id: { type: "string" },
               title: { type: "string" },
               description: { type: "string" },
               date: { type: "string" },
             },
-            required: ["amount", "category_id", "title"],
+            required: ["amount", "category_id", "account_id", "title"],
           },
         },
         {
@@ -156,6 +165,13 @@ function createMcpServer(user) {
         const categories = await Category.find(query).lean();
         return {
           content: [{ type: "text", text: JSON.stringify(categories) }]
+        };
+      }
+      
+      if (name === "list_accounts") {
+        const accounts = await Account.find({ userId: user._id }).lean();
+        return {
+          content: [{ type: "text", text: JSON.stringify(accounts) }]
         };
       }
       
@@ -301,20 +317,23 @@ function createMcpServer(user) {
       }
 
       if (name === "add_transaction") {
-        const { amount, type = "expense", category_id, title, description, date } = args;
+        const { amount, type = "expense", category_id, account_id, title, description, date } = args;
         
         if (amount <= 0) throw new Error("Amount must be positive");
         
-        let accountId = user.dailySettings?.accountId;
+        let accountId = account_id;
         if (!accountId) {
-          const defaultAccount = await Account.findOne({ userId: user._id, isDefault: true });
-          if (defaultAccount) accountId = defaultAccount._id;
-          else {
-            const anyAccount = await Account.findOne({ userId: user._id });
-            if (anyAccount) accountId = anyAccount._id;
+          accountId = user.dailySettings?.accountId;
+          if (!accountId) {
+            const defaultAccount = await Account.findOne({ userId: user._id, isDefault: true });
+            if (defaultAccount) accountId = defaultAccount._id;
             else {
-              const newAcc = await Account.create({ userId: user._id, name: "Main Wallet", type: "cash", isDefault: true });
-              accountId = newAcc._id;
+              const anyAccount = await Account.findOne({ userId: user._id });
+              if (anyAccount) accountId = anyAccount._id;
+              else {
+                const newAcc = await Account.create({ userId: user._id, name: "Main Wallet", type: "cash", isDefault: true });
+                accountId = newAcc._id;
+              }
             }
           }
         }

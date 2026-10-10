@@ -14,7 +14,7 @@ export function BottomNavigation() {
     { id: "transactions", label: "Transactions", icon: Receipt, href: "/transactions" },
     { id: "manage", label: "Manage", icon: LayoutGrid, href: "/manage" },
     // Profile tab will show the user's avatar if logged in
-    { id: "profile", label: "Profile", isLogo: true, icon: user?.avatarUrl || "https://devinsol.com/wp-content/uploads/2025/07/devinsol-favicon.png", href: "/profile" },
+    { id: "profile", label: "Profile", isLogo: true, icon: user?.avatarUrl || "https://www.devinsol.com/images/logo@2x.webp", href: "/profile" },
   ]
 
   // Hide navigation if user is not logged in or on the landing page
